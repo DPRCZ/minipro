@@ -187,10 +187,10 @@ void done(Parser *p)
 	memset(p, 0, sizeof *p);
 }
 
-Memblock get_attribute(const uint8_t *tag, size_t taglen, const char *attribute)
+Memblock get_attribute(const char *tag, size_t taglen, const char *attribute)
 {
 	int i = 0;
-	Memblock m = (Memblock){ strlen(attribute), (uint8_t *)attribute };
+	Memblock m = (Memblock){ strlen(attribute), attribute };
 	for (; i < (int)taglen - 3 - (int)m.z; ++i) {
 		if (tag[i + m.z + 1] == '=' && tag[i + m.z + 2] == '\"' &&
 		    memchr(" \n\r\t\v\f", tag[i], 6) != 0 &&

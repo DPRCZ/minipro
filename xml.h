@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 typedef struct {
 	size_t z;
-	const uint8_t *b;
+	const char *b;
 } Memblock;
 
 typedef struct {
@@ -63,5 +63,5 @@ enum {
 
 int parse(Parser *);
 void done(Parser *);
-Memblock get_attribute(const uint8_t *, size_t, const char *);
+Memblock get_attribute(const char *, size_t, const char *);
 #endif

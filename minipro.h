@@ -69,6 +69,8 @@
 #define MP_SRAM				   0x04
 #define MP_LOGIC			   0x05
 #define MP_NAND				   0x06
+#define MP_EMMC				   0x07
+#define MP_VGA				   0x08
 
 /* voltage
  * for ATF20V10C and ATF16V8C variants
@@ -142,7 +144,6 @@ typedef struct flags {
 	uint8_t custom_protocol;
 	uint8_t has_power_down;
 	uint8_t is_powerdown_disabled;
-
 	uint32_t raw_flags;
 } flags_t;
 
@@ -192,6 +193,9 @@ typedef struct device {
 	void *config; /* Configuration bytes that's presenting in some architectures */
 	uint8_t vector_count;
 	uint8_t *vectors;
+	uint8_t tl866_only; /* chip available only for TL866II */
+	uint8_t t48_only;     /* chip available only for T48 */
+	uint8_t t56_only;     /* chip available only for T56 */
 } device_t;
 
 typedef struct minipro_status {
