@@ -425,6 +425,28 @@ void print_device_info_and_exit(cmdopts_t *cmdopts)
 			device->vector_count);
 
 	} else {
+		/* Availability */
+		fprintf(stderr, "Available on: ");
+		if (handle->version != MP_TL866IIPLUS) {
+			fprintf(stderr, "TL866A/CS");
+		} else {
+			int c = 0;
+			int all = (!device->tl866_only && !device->t48_only &&
+				   !device->t56_only);
+			if (all || device->tl866_only){
+				fprintf(stderr, "TL866II");
+				c++;
+			}
+			if (all || device->t48_only){
+				fprintf(stderr, "%sT48", c ? ", " : "");
+				c++;
+			}
+			if (all || device->t56_only){
+				fprintf(stderr, "%sT56", c ? ", " : "");
+				c++;
+			}
+			fprintf(stderr, "%s\n", --c ? "" : " only");
+		}
 		/* Memory shape */
 		fprintf(stderr, "Memory: %u",
 			device->code_memory_size / device->flags.word_size);
