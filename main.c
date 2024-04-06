@@ -187,8 +187,8 @@ int get_programmer_version(uint8_t *version)
 	      minipro_get_devices_count(MP_TL866IIPLUS))) {
 		if (!(*version)) {
 			fprintf(stderr,
-				"No TL866 device found. Which database do you want to display?\n1) "
-				"TL866A\n2) TL866II+\n3) Abort\n");
+				"No device found. Which database do you want to display?\n1) "
+				"TL866A/CS\n2) TL866II+/T48/T56\n3) Abort\n");
 			fflush(stderr);
 			char c = getchar();
 			switch (c) {
