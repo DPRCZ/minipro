@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string.h>
 #include "xml.h"
 
-#define BUFFER_SIZE 65536U
+#define BUFFER_SIZE 102400U
 
 static size_t readblock(FILE *f, uint8_t *s, size_t w)
 {
