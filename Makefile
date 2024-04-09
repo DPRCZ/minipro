@@ -58,13 +58,15 @@ else
 endif
 
 COMMON_OBJECTS=xml.o jedec.o ihex.o srec.o database.o bitbang.o prom.o \
-               minipro.o tl866a.o tl866iiplus.o t48.o t56.o version.o $(USB)
+               minipro.o tl866a.o tl866iiplus.o t48.o t56.o version.o \
+               base64.o $(USB)
 OBJECTS=$(COMMON_OBJECTS) main.o
 PROGS=minipro
 STATIC_LIB=libminipro.a
 MINIPRO=minipro
 INFOIC=infoic.xml
 LOGICIC=logicic.xml
+ALGORITHM=algorithm.xml
 TESTS=$(wildcard tests/test_*.c);
 OBJCOPY?=objcopy
 
@@ -83,13 +85,17 @@ COMPLETIONS_INSTDIR=$(DESTDIR)$(COMPLETIONS_DIR)
 
 ifneq ($(OS),Windows_NT)
     libusb_CFLAGS := $(shell $(PKG_CONFIG) --cflags libusb-1.0)
+    zlib_CFLAGS := $(shell $(PKG_CONFIG) --cflags zlib)
     libusb_LIBS := $(shell $(PKG_CONFIG) --libs libusb-1.0)
-
+    zlib_LIBS := $(shell $(PKG_CONFIG) --libs zlib)
     ifeq ($(libusb_LIBS),)
         ERROR := $(error "libusb-1.0 not found")
     endif
-    override CFLAGS += $(libusb_CFLAGS)
-    override LIBS += $(libusb_LIBS) $(EXTRA_LIBS)
+    ifeq ($(zlib_LIBS),)
+        ERROR := $(error "zlib not found")
+    endif
+    override CFLAGS += $(libusb_CFLAGS) $(zlib_CFLAGS)
+    override LIBS += $(libusb_LIBS) $(zlib_LIBS) $(EXTRA_LIBS)
 else
 # Add Windows libs here
 override LIBS += -lsetupapi \
@@ -142,6 +148,7 @@ install:
 	cp $(MINIPRO) $(BIN_INSTDIR)/
 	cp $(INFOIC) $(SHARE_INSTDIR)/
 	cp $(LOGICIC) $(SHARE_INSTDIR)/
+	cp $(ALGORITHM) $(SHARE_INSTDIR)/
 	cp man/minipro.1 $(MAN_INSTDIR)/
 	if [ -n "$(UDEV_DIR)" ]; then \
 		mkdir -p $(UDEV_RULES_INSTDIR); \
@@ -158,6 +165,7 @@ uninstall:
 	rm -f $(BIN_INSTDIR)/$(MINIPRO)
 	rm -f $(SHARE_INSTDIR)/$(INFOIC)
 	rm -f $(SHARE_INSTDIR)/$(LOGICIC)
+	rm -f $(SHARE_INSTDIR)/$(ALGORITHM)
 	rm -f $(MAN_INSTDIR)/minipro.1
 	if [ -n "$(UDEV_DIR)" ]; then rm -f $(UDEV_RULES_INSTDIR)/60-minipro.rules; fi
 	if [ -n "$(UDEV_DIR)" ]; then rm -f $(UDEV_RULES_INSTDIR)/61-minipro-plugdev.rules; fi
