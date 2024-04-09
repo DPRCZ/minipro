@@ -890,23 +890,28 @@ static int profile_callback(int type, const char *tag, size_t taglen,
 			/* Unused parameters can be omitted */
 			uint32_t num_calibytes, num_uids, config_addr,
 				osccal_save, eep_addr, bg_mask;
-			if (get_attr_value(tag, taglen, "num_calibytes",
-					   &num_calibytes) != ERREND)
+			err = get_attr_value(tag, taglen, "num_calibytes",
+					     &num_calibytes);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
-			if (get_attr_value(tag, taglen, "num_uids",
-					   &num_uids) != ERREND)
+			err = get_attr_value(tag, taglen, "num_uids",
+					     &num_uids);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
-			if (get_attr_value(tag, taglen, "config_addr",
-					   &config_addr) != ERREND)
+			err = get_attr_value(tag, taglen, "config_addr",
+					     &config_addr);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
-			if (get_attr_value(tag, taglen, "osccal_save",
-					   &osccal_save) != ERREND)
+			err = get_attr_value(tag, taglen, "osccal_save",
+					     &osccal_save);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
-			if (get_attr_value(tag, taglen, "eep_addr",
-					   &eep_addr) != ERREND)
+			err = get_attr_value(tag, taglen, "eep_addr",
+					     &eep_addr);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
-			if (get_attr_value(tag, taglen, "bg_mask", &bg_mask) !=
-			    ERREND)
+			err = get_attr_value(tag, taglen, "bg_mask", &bg_mask);
+			if (err && err != ERREND)
 				return EXIT_FAILURE;
 
 			config->num_calibytes = num_calibytes;
