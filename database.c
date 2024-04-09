@@ -23,7 +23,9 @@
 #include <sys/time.h>
 #include <ctype.h>
 #include <errno.h>
+#include <zlib.h>
 #include "xml.h"
+#include "base64.h"
 #include "database.h"
 
 #ifdef _WIN32
@@ -65,9 +67,13 @@
 #define T48_FLAG		 0x40000000
 #define DEVICE_MASK		 (T56_FLAG | T48_FLAG | TL866II_FLAG)
 
+#define ALGO_CRC_OFFSET		 0x04
+#define ALGO_DATA_OFFSET	 0x08
+
 /* infoic.xml name and tag names */
 #define INFOIC_NAME		 "infoic.xml"
 #define LOGICIC_NAME		 "logicic.xml"
+#define ALGO_NAME		 "algorithm.xml"
 #define DB_TAG			 "database"
 #define TYPE_ATTR		 "type"
 #define MANUF_TAG		 "manufacturer"
@@ -80,6 +86,9 @@
 #define INFOIC_ATTR_NAME	 "INFOIC"
 #define INFOIC2PLUS_ATTR_NAME	 "INFOIC2PLUS"
 #define LOGIC_ATTR_NAME		 "LOGIC"
+#define ALGO_ATTR_NAME		 "ALGORITHMS"
+#define ALGOS_TAG		 "algorithms_t56"
+#define ALGO_TAG		 "algorithm"
 #define CFGS_TAG		 "configurations"
 #define MAPS_TAG		 "maps"
 #define MAP_TAG			 "map"
@@ -94,6 +103,7 @@
 #define INFOIC_DATABASE		 0x01
 #define INFOIC2PLUS_DATABASE	 0x02
 #define LOGIC_DATABASE		 0x03
+#define ALGORITHM_DATABASE	 0x04
 
 #define CUSTOM_PROTOCOL_MASK	 0x80000000
 #define MCU_CHIP		 0
@@ -156,6 +166,17 @@ typedef struct state_machine_m {
 	db_data_t *db_data;
 } state_machine_m_t;
 
+/* State machine structure used by sax algorithm parser callback function
+ * for persistent data between calls.
+ */
+typedef struct state_machine_a {
+	int has_algo;
+	int found;
+	int skip;
+	char *base64_data;
+	db_data_t *db_data;
+} state_machine_a_t;
+
 static int parse_profiles(state_machine_p_t *);
 
 /* return pin count from package_details */
@@ -210,7 +231,7 @@ static int tagcmpn(const char *tag, size_t taglen, const char *str)
 
 	if (!len || len < strlen(str))
 		return 1;
-	return strncasecmp((char *)tag, str, len);
+	return strncasecmp(tag, str, len);
 }
 
 /* Parse comma separated values from an element tag
@@ -568,6 +589,67 @@ static int compare_device(const char *xml_device, size_t size,
 		sm->found = 1;
 	}
 	return EXIT_SUCCESS;
+}
+
+/* XML algorithm SAX parser handler. Each xml tag pair is dispatched here.
+ * The persistent state machine data are kept in parser->userdata structure
+ */
+static int algo_callback(int type, const char *tag, size_t taglen,
+			 Parser *parser)
+{
+	state_machine_a_t *sm = parser->userdata;
+	Memblock mb;
+
+	/* If needed algorithm is found and parsed or we reached the end of
+	 * section skip until EOF
+	 */
+	if (sm->found)
+		return XML_OK;
+
+	switch (type) {
+	case OPENTAG_:
+	case SELFCLOSE_:
+		/* Search for 'database' tag */
+		if (!tagcmpn(tag, taglen, DB_TAG)) {
+			/* Grab the device name */
+			mb = get_attribute(tag, taglen, TYPE_ATTR);
+			if (!mb.b)
+				return EXIT_FAILURE;
+
+			/* skip if 'ALGORITHMS' attribute is not found */
+			if (!tagcmpn(mb.b, mb.z, ALGO_ATTR_NAME))
+				return XML_OK;
+		}
+
+		/* skip until an 'algorithm' tag is found */
+		if (!tagcmpn(tag, taglen, ALGOS_TAG)) {
+			sm->has_algo = 1;
+			return XML_OK;
+		}
+
+		/* Found an algorithm entry */
+		if (sm->has_algo && !sm->found &&
+		    !tagcmpn(tag, taglen, ALGO_TAG)) {
+			/* Grab the device name */
+			mb = get_attribute(tag, taglen, NAME_ATTR);
+			if (!mb.b)
+				return EXIT_FAILURE;
+			if (!tagcmpn(mb.b, mb.z, sm->db_data->device_name)) {
+				/* get the bitstream entry*/
+				mb = get_attribute(tag, taglen, "bitstream");
+				if (!mb.b || !mb.z)
+					return EXIT_FAILURE;
+
+				/* Copy base64 string */
+				sm->base64_data = strndup(mb.b, mb.z);
+				if (!sm->base64_data)
+					return ERRMEM;
+				sm->found = 1;
+				return XML_OK;
+			}
+		}
+	}
+	return XML_OK;
 }
 
 /* XML pin map SAX parser handler. Each xml tag pair is dispatched here.
@@ -1294,6 +1376,30 @@ static int parse_profiles(state_machine_p_t *sm)
 	return EXIT_SUCCESS;
 }
 
+/* Parse xml algorithms */
+static int parse_algorithms(state_machine_a_t *sm)
+{
+	/* Open database xml file */
+	FILE *file = get_database_file(ALGO_NAME, sm->db_data->algo_path);
+	if (!file)
+		return EXIT_FAILURE;
+
+	/* Begin xml parse */
+	Parser parser = { .inputcbdata = file,
+			  .worker = algo_callback,
+			  .userdata = sm };
+
+	int ret = parse(&parser);
+	done(&parser);
+	fclose(file);
+	if (ret) {
+		fprintf(stderr,
+			"An error occurred while parsing XML algorithms.\n");
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
+}
+
 /* Parse given xml file */
 static int parse_xml_file(void *sm, const char *name, const char *cli_name)
 {
@@ -1477,4 +1583,109 @@ pin_map_t *get_pin_map(db_data_t *db_data)
 		return NULL;
 	}
 	return sm.map;
+}
+
+/* Return an algorithm_t structure */
+algorithm_t *get_algorithm(db_data_t *db_data)
+{
+	if (!db_data->device_name) {
+		fprintf(stderr, "No algorithm is available for this chip.\n");
+		return NULL;
+	}
+
+	/* Set the algorithm database for search */
+	db_data->version = ALGORITHM_DATABASE;
+	state_machine_a_t sm;
+	memset(&sm, 0, sizeof(sm));
+	sm.db_data = db_data;
+
+	/*Search the desired algorithm inthe xml database*/
+	if (parse_algorithms(&sm))
+		return NULL;
+	if (!sm.base64_data) {
+		fprintf(stderr, "No algorithm %s was found.\n",
+			db_data->device_name);
+		return NULL;
+	}
+
+	/* We have the base64 string let's decode it */
+	unsigned int out_size = strlen(sm.base64_data);
+	char *gzip = malloc(out_size * 4 / 3 + 8);
+	if (!gzip) {
+		free(sm.base64_data);
+		return NULL;
+	}
+
+	base64_decodestate ds;
+	base64_init_decodestate(&ds);
+	out_size = base64_decode_block(sm.base64_data, out_size, gzip, &ds);
+	free(sm.base64_data);
+	if (!gzip)
+		return NULL;
+
+	/* Allocate algorithm structure */
+	algorithm_t *algorithm = malloc(sizeof(algorithm_t));
+	if (!algorithm)
+		return NULL;
+
+	/* Get the gzip uncompressed size */
+	uint32_t usize =
+		load_int((uint8_t *)(gzip + out_size - 4), 4, MP_LITTLE_ENDIAN);
+
+	/* Round up to the nearest 256 byte multiple  */
+	algorithm->length = usize + 0x100 - (usize % 0x100);
+
+	algorithm->bitstream = malloc(algorithm->length);
+	if (!algorithm->bitstream) {
+		free(algorithm);
+		return NULL;
+	}
+
+	/*Uncompress data using zlib*/
+	z_stream stream = { .next_in = (Bytef *)gzip,
+			    .avail_in = (uInt)out_size,
+			    .next_out = (Bytef *)algorithm->bitstream,
+			    .avail_out = algorithm->length };
+
+	if (inflateInit2(&stream, MAX_WBITS + 16) != Z_OK) {
+		free(algorithm->bitstream);
+		free(algorithm);
+		return NULL;
+	}
+
+	int error = inflate(&stream, Z_FINISH);
+	if (error != Z_OK && error != Z_STREAM_END) {
+		free(algorithm->bitstream);
+		free(algorithm);
+		return NULL;
+	}
+
+	if (inflateEnd(&stream) != Z_OK) {
+		free(algorithm->bitstream);
+		free(algorithm);
+		return NULL;
+	}
+
+	/* Check if gzip inflate was ok */
+	if (stream.total_out != usize) {
+		free(algorithm->bitstream);
+		free(algorithm);
+		return NULL;
+	}
+
+	/* Check for algorithm integrity */
+	uint32_t file_crc = load_int(algorithm->bitstream + ALGO_CRC_OFFSET, 4,
+				     MP_LITTLE_ENDIAN);
+	uint32_t data_crc = crc_32(algorithm->bitstream + ALGO_DATA_OFFSET,
+				   usize - ALGO_DATA_OFFSET,
+				   0xFFFFFFFF);
+
+	if (file_crc != data_crc) {
+		fprintf(stderr, "Corrupted %s algorithm.\n",
+			db_data->device_name);
+		free(algorithm->bitstream);
+		free(algorithm);
+		return NULL;
+	}
+	return algorithm;
 }

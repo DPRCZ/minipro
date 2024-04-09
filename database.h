@@ -61,9 +61,15 @@ typedef struct pin_map {
 	uint16_t mask[40];
 } pin_map_t;
 
+typedef struct algorithm {
+	size_t length;;
+	uint8_t *bitstream;
+} algorithm_t;
+
 typedef struct db_data {
 	const char *infoic_path;
 	const char *logicic_path;
+	const char *algo_path;
 	const char *device_name;
 	uint8_t version;
 	uint32_t chip_id;
@@ -74,6 +80,7 @@ typedef struct db_data {
 } db_data_t;
 
 pin_map_t *get_pin_map(db_data_t *);
+algorithm_t *get_algorithm(db_data_t *);
 int print_chip_count(db_data_t *);
 int list_devices(db_data_t *);
 device_t *get_device_by_name(db_data_t *);

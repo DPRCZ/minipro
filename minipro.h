@@ -209,6 +209,7 @@ typedef struct cmdopts_s {
 	char *filename;
 	char *infoic_path;
 	char *logicic_path;
+	char *algo_path;
 	char *device_name;
 	enum {
 		UNSPECIFIED = 0,

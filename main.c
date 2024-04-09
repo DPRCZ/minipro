@@ -106,6 +106,7 @@ static struct option long_options[] = {
 	{ "lock", no_argument, NULL, 1 },
 	{ "infoic", required_argument, NULL, 3 },
 	{ "logicic", required_argument, NULL, 4 },
+	{ "algorithms", required_argument, NULL, 5 },
 	{ "list", no_argument, NULL, 'l' },
 	{ "search", required_argument, NULL, 'L' },
 	{ "get_info", required_argument, NULL, 'd' },
@@ -725,6 +726,7 @@ void spi_autodetect_and_exit(uint8_t package_type, cmdopts_t *cmdopts)
 	memset(&db_data, 0, sizeof(db_data));
 	db_data.logicic_path = cmdopts->logicic_path;
 	db_data.infoic_path = cmdopts->infoic_path;
+	db_data.algo_path = cmdopts->algo_path;
 	db_data.chip_id = chip_id;
 	db_data.pin_count = package_type;
 	db_data.version = handle->version;
@@ -764,7 +766,9 @@ void parse_cmdline(int argc, char **argv, cmdopts_t *cmdopts)
 		case 4:
 			cmdopts->logicic_path = optarg; /* Custom logicic.xml */
 			break;
-
+		case 5:
+			cmdopts->algo_path = optarg; /* Custom algorithm.xml */
+			break;
 		case 'q':
 			if (!strcasecmp(optarg, "tl866a"))
 				cmdopts->version = MP_TL866A;

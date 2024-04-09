@@ -34,9 +34,23 @@
 #define T56_BEGIN_TRANS		0x03
 #define T56_END_TRANS		0x04
 #define T56_READID		0x05
+#define T56_WRITE_BITSTREAM 0x26
 
 #define T56_REQUEST_STATUS	0x39
 
+/* clang-format off */
+#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+static const char t56_algo_table[][32] = {
+	"IIC24C",   "MW93ALG", "SPI25F", "AT45D",    "F29EE",	"W29F32P",
+	"ROM28P",   "ROM32P",  "ROM40P", "R28TO32P", "ROM24P",	"ROM44",
+	"EE28C32P", "RAM32",   "SPI25F", "28F32P",   "FWH",	     "T48",
+	"T40A",	   	"T40B",    "T88V",	 "PIC32X",   "P18F87J", "P16F",
+	"P18F2",    "P16F5X",  "P16CX",	 "",	     "ATMGA_",	"ATTINY_",
+	"AT89P20_", "",	       "AT89C_", "P87C_",    "SST89_",	"W78E_",
+	"",	        "",	       "ROM24P", "ROM28P",   "RAM32",	"GAL16",
+	"GAL20",	"GAL22",   "NAND_",	 "PIC32X",   "RAM36",	"KB90",
+	"EMMC_",    "VGA_",    "CPLD_",	 "GEN_",     "ITE_"
+};
 
 /* clang-format on */
 int t56_begin_transaction(minipro_handle_t *handle)
@@ -45,7 +59,48 @@ int t56_begin_transaction(minipro_handle_t *handle)
 	uint8_t ovc;
 	device_t *device = handle->device;
 
+	/* Get the required FPGA bitstream algorithm */
+	uint8_t algo_number = (uint8_t)(device->variant >> 8);
+	if (algo_number == 0 || device->protocol_id > ALGO_COUNT ||
+	    !*t56_algo_table[device->protocol_id]) {
+		fprintf(stderr, "Invalid algorithm number found.\n");
+		return EXIT_FAILURE;
+	}
+
+	db_data_t db_data;
+	memset(&db_data, 0, sizeof(db_data));
+	db_data.algo_path = handle->cmdopts->algo_path;
+
+	char algo_name[64];
+	snprintf(algo_name, sizeof(algo_name), "%s%02X",
+		 t56_algo_table[device->protocol_id - 1], algo_number);
+	db_data.device_name = algo_name;
+
+	algorithm_t *algorithm = get_algorithm(&db_data);
+	if (!algorithm){
+		fprintf(stderr, "T56 initialization error.\n");
+		return EXIT_FAILURE;
+	}
+
+	fprintf(stderr, "Using %s algorithm..\n", db_data.device_name);;
+
 	memset(msg, 0x00, sizeof(msg));
+
+	/* Send the bitstream algorithm to the T56 */
+	msg[0] = T56_WRITE_BITSTREAM;
+	format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
+	if (msg_send(handle->usb_handle, msg, 8)){
+		free(algorithm->bitstream);
+		free(algorithm);
+		return EXIT_FAILURE;
+	}
+	if (msg_send(handle->usb_handle, algorithm->bitstream,
+		     algorithm->length)){
+		free(algorithm->bitstream);
+		free(algorithm);
+		return EXIT_FAILURE;
+	}
+
 	if (!handle->device->flags.custom_protocol) {
 		msg[0] = T56_BEGIN_TRANS;
 		msg[1] = device->protocol_id;
