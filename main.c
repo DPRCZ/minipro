@@ -712,7 +712,13 @@ void spi_autodetect_and_exit(uint8_t package_type, cmdopts_t *cmdopts)
 				minipro_close(handle);
 				exit(EXIT_FAILURE);
 			}
-			/* device must be null before  minipro_spi_autodetect */
+
+			/*
+			 * For the time being, device must be NULL
+			 * before minipro_spi_autodetect() is called.
+			 * Otherwise bb_autodetect() will be called,
+			 * which is currently not implemented.
+			 */
 			handle->device = NULL;
 		} else
 			fprintf(stderr, "Pin test is not supported.\n");

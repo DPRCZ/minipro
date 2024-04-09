@@ -122,63 +122,64 @@ int bb_write_block(minipro_handle_t *handle, uint8_t type, uint32_t addr,
 int bb_read_fuses(minipro_handle_t *handle, uint8_t type, size_t length,
 		  uint8_t items_count, uint8_t *buffer)
 {
-	fprintf(stderr, "bb_read_fuses\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_read_fuses\n");
+	return EXIT_FAILURE;
 }
 
 int bb_write_fuses(minipro_handle_t *handle, uint8_t type, size_t length,
 		   uint8_t items_count, uint8_t *buffer)
 {
-	fprintf(stderr, "bb_write_fuses\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_write_fuses\n");
+	return EXIT_FAILURE;
 }
 
 int bb_read_calibration(minipro_handle_t *handle, uint8_t *buffer, size_t len)
 {
-	fprintf(stderr, "bb_read_calibration\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_read_calibration\n");
+	return EXIT_FAILURE;
 }
 
 int bb_get_chip_id(minipro_handle_t *handle, uint32_t *device_id)
 {
-	fprintf(stderr, "bb_get_chip_id\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_get_chip_id\n");
+	return EXIT_FAILURE;
 }
+
 int bb_spi_autodetect(minipro_handle_t *handle, uint8_t type,
 		      uint32_t *device_id)
 {
-	fprintf(stderr, "bb_spi_autodetect\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_spi_autodetect\n");
+	return EXIT_FAILURE;
 }
 
 int bb_protect_off(minipro_handle_t *handle)
 {
-	fprintf(stderr, "bb_protect_off\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_protect_off\n");
+	return EXIT_FAILURE;
 }
 
 int bb_protect_on(minipro_handle_t *handle)
 {
-	fprintf(stderr, "bb_protect_on\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_protect_on\n");
+	return EXIT_FAILURE;
 }
 
 int bb_erase(minipro_handle_t *handle)
 {
-	fprintf(stderr, "bb_erase\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_erase\n");
+	return EXIT_FAILURE;
 }
 
 int bb_write_jedec_row(minipro_handle_t *handle, uint8_t *buffer, uint8_t row,
 		       uint8_t flags, size_t size)
 {
-	fprintf(stderr, "bb_write_jedec_row\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_write_jedec_row\n");
+	return EXIT_FAILURE;
 }
 
 int bb_read_jedec_row(minipro_handle_t *handle, uint8_t *buffer, uint8_t row,
 		      uint8_t flags, size_t size)
 {
-	fprintf(stderr, "bb_read_jedec_row\n");
-	return EXIT_SUCCESS;
+	fprintf(stderr, "Unimplemented bb_read_jedec_row\n");
+	return EXIT_FAILURE;
 }

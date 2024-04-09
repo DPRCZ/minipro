@@ -206,9 +206,9 @@ static int mask_prom_init(minipro_handle_t *handle)
 	set_io_pins(zif_state, mask_prom_table[type].ce_pins, 1, pin_count);
 	set_io_pins(zif_state, mask_prom_table[type].cs_pins, 1, pin_count);
 
-	if (handle->minipro_set_zif_direction(handle, zif_dir))
+	if (minipro_set_zif_direction(handle, zif_dir))
 		return EXIT_FAILURE;
-	if (handle->minipro_set_zif_state(handle, zif_state))
+	if (minipro_set_zif_state(handle, zif_state))
 		return EXIT_FAILURE;
 
 	/* Set all GND and VCC power pins */
@@ -220,11 +220,10 @@ static int mask_prom_init(minipro_handle_t *handle)
 	/* Now switch the power on. We need to set voltages after any
 	 * pin driver settings because the firmware will reset all voltages
 	 * to default. */
-	if (handle->minipro_set_pin_drivers(handle, pin_drivers))
+	if (minipro_set_pin_drivers(handle, pin_drivers))
 		return EXIT_FAILURE;
 	/* Set VPP and VCC voltages */
-	return handle->minipro_set_voltages(handle,
-					    handle->device->voltages.vcc,
+	return minipro_set_voltages(handle, handle->device->voltages.vcc,
 					    handle->device->voltages.vpp);
 }
 
@@ -265,9 +264,9 @@ int prom_init(minipro_handle_t *handle)
 	set_io_pins(zif_state, prom_table[type].ce_lo_pins, 1, pin_count);
 	set_io_pins(zif_state, prom_table[type].ce_hi_pins, 0, pin_count);
 
-	if (handle->minipro_set_zif_direction(handle, zif_dir))
+	if (minipro_set_zif_direction(handle, zif_dir))
 		return EXIT_FAILURE;
-	if (handle->minipro_set_zif_state(handle, zif_state))
+	if (minipro_set_zif_state(handle, zif_state))
 		return EXIT_FAILURE;
 
 	/* Set all GND and VCC power pins */
@@ -279,18 +278,17 @@ int prom_init(minipro_handle_t *handle)
 	/* Now switch the power on. We need to set voltages after any
 	 * pin driver settings because the firmware will reset all
 	 * voltages to default. */
-	if (handle->minipro_set_pin_drivers(handle, pin_drivers))
+	if (minipro_set_pin_drivers(handle, pin_drivers))
 		return EXIT_FAILURE;
 	/* Set VPP and VCC voltages */
-	return handle->minipro_set_voltages(handle,
-					    handle->device->voltages.vcc,
+	return minipro_set_voltages(handle, handle->device->voltages.vcc,
 					    handle->device->voltages.vpp);
 }
 
 /* Reset all pin drivers and terminate current session */
 int prom_terminate(minipro_handle_t *handle)
 {
-	return handle->minipro_reset_state(handle);
+	return minipro_reset_state(handle);
 }
 
 /* Helper function for prom_read - checks whether buffer is empty */
@@ -314,9 +312,9 @@ static int prom_read_mask_prom(minipro_handle_t *handle, uint32_t address,
 	set_io_pins(zif_dir, mask_prom_table[type].data_bus_pins,
 		    MP_PIN_DIRECTION_IN | MP_PIN_PULLUP, pin_count);
 
-	if (handle->minipro_set_zif_direction(handle, zif_dir))
+	if (minipro_set_zif_direction(handle, zif_dir))
 		return EXIT_FAILURE;
-	if (handle->minipro_set_zif_state(handle, zif_state))
+	if (minipro_set_zif_state(handle, zif_state))
 		return EXIT_FAILURE;
 
 	for (uint8_t ce_bit_pattern = 0; ce_bit_pattern < (1 << ce_pin_count);
@@ -330,16 +328,16 @@ static int prom_read_mask_prom(minipro_handle_t *handle, uint32_t address,
 				 address + i, pin_count);
 			set_bits(zif_state, mask_prom_table[type].cs_pins,
 					 cs_bit_pattern, pin_count);
-			if (handle->minipro_set_zif_state(handle, zif_state))
+			if (minipro_set_zif_state(handle, zif_state))
 				return EXIT_FAILURE;
 
 			set_bits(zif_state, mask_prom_table[type].ce_pins,
 					 ce_bit_pattern, pin_count);
-			if (handle->minipro_set_zif_state(handle, zif_state))
+			if (minipro_set_zif_state(handle, zif_state))
 			  return EXIT_FAILURE;
 
 			/* Now read the zif pins */
-			if (handle->minipro_get_zif_state(handle, zif))
+			if (minipro_get_zif_state(handle, zif))
 				return EXIT_FAILURE;
 
 			/* Convert zif data bus value and write it to buffer */
@@ -348,7 +346,7 @@ static int prom_read_mask_prom(minipro_handle_t *handle, uint32_t address,
 
 			set_bits(zif_state, mask_prom_table[type].ce_pins,
 					 ~ce_bit_pattern, pin_count);
-			if (handle->minipro_set_zif_state(handle, zif_state))
+			if (minipro_set_zif_state(handle, zif_state))
 			  return EXIT_FAILURE;
 		}
 
@@ -383,9 +381,9 @@ int prom_read(minipro_handle_t *handle, uint32_t address, uint8_t *buffer,
 	set_io_pins(zif_state, prom_table[type].ce_lo_pins, 0, pin_count);
 	set_io_pins(zif_state, prom_table[type].ce_hi_pins, 1, pin_count);
 
-	if (handle->minipro_set_zif_direction(handle, zif_dir))
+	if (minipro_set_zif_direction(handle, zif_dir))
 		return EXIT_FAILURE;
-	if (handle->minipro_set_zif_state(handle, zif_state))
+	if (minipro_set_zif_state(handle, zif_state))
 		return EXIT_FAILURE;
 
 	/* Read length bytes */
@@ -393,11 +391,11 @@ int prom_read(minipro_handle_t *handle, uint32_t address, uint8_t *buffer,
 		/* Set address value to zif pins */
 		set_bits(zif_state, prom_table[type].addr_bus_pins, address + i,
 			 pin_count);
-		if (handle->minipro_set_zif_state(handle, zif_state))
+		if (minipro_set_zif_state(handle, zif_state))
 			return EXIT_FAILURE;
 
 		/* Now read the zif pins */
-		if (handle->minipro_get_zif_state(handle, zif))
+		if (minipro_get_zif_state(handle, zif))
 			return EXIT_FAILURE;
 
 		/* Convert zif data bus value and write it to buffer */
@@ -408,5 +406,5 @@ int prom_read(minipro_handle_t *handle, uint32_t address, uint8_t *buffer,
 	/* Set chip enable pins state to disabled */
 	set_io_pins(zif_state, prom_table[type].ce_lo_pins, 1, pin_count);
 	set_io_pins(zif_state, prom_table[type].ce_hi_pins, 0, pin_count);
-	return handle->minipro_set_zif_state(handle, zif_state);
+	return minipro_set_zif_state(handle, zif_state);
 }

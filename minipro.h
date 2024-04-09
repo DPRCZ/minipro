@@ -356,4 +356,10 @@ int minipro_hardware_check(minipro_handle_t *handle);
 int minipro_firmware_update(minipro_handle_t *handle, const char *firmware);
 int minipro_pin_test(minipro_handle_t *handle);
 int minipro_logic_ic_test(minipro_handle_t *handle);
+int minipro_set_zif_direction(minipro_handle_t *handle, uint8_t *zif_dir);
+int minipro_set_zif_state(minipro_handle_t *handle, uint8_t *zif_state);
+int minipro_get_zif_state(minipro_handle_t *handle, uint8_t *zif_state);
+int minipro_set_pin_drivers(minipro_handle_t *handle, pin_driver_t *pins);
+int minipro_set_voltages(minipro_handle_t *handle, uint8_t vcc, uint8_t vpp);
+int minipro_reset_state(minipro_handle_t *handle);
 #endif

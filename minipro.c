@@ -648,3 +648,64 @@ int minipro_logic_ic_test(minipro_handle_t *handle)
 	fprintf(stderr, "%s: logic IC test not implemented\n", handle->model);
 	return EXIT_FAILURE;
 }
+
+int minipro_set_zif_direction(minipro_handle_t *handle, uint8_t *zif_dir)
+{
+	assert(handle != NULL);
+	if (handle->minipro_set_zif_direction) {
+		return handle->minipro_set_zif_direction(handle, zif_dir);
+	}
+	fprintf(stderr, "%s: set zif direction not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
+int minipro_set_zif_state(minipro_handle_t *handle, uint8_t *zif_state)
+{
+	assert(handle != NULL);
+	if (handle->minipro_set_zif_state) {
+		return handle->minipro_set_zif_state(handle, zif_state);
+	}
+	fprintf(stderr, "%s: set zif state not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
+int minipro_get_zif_state(minipro_handle_t *handle, uint8_t *zif_state)
+{
+	assert(handle != NULL);
+	if (handle->minipro_get_zif_state) {
+		return handle->minipro_get_zif_state(handle, zif_state);
+	}
+	fprintf(stderr, "%s: get zif state not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
+int minipro_set_pin_drivers(minipro_handle_t *handle, pin_driver_t *pins)
+{
+	assert(handle != NULL);
+	if (handle->minipro_set_pin_drivers) {
+		return handle->minipro_set_pin_drivers(handle, pins);
+	}
+	fprintf(stderr, "%s: set pin drivers not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
+int minipro_set_voltages(minipro_handle_t *handle, uint8_t vcc, uint8_t vpp)
+{
+	assert(handle != NULL);
+	if (handle->minipro_set_voltages) {
+		return handle->minipro_set_voltages(handle, vcc, vpp);
+	}
+	fprintf(stderr, "%s: set voltages not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
+int minipro_reset_state(minipro_handle_t *handle)
+{
+	assert(handle != NULL);
+	if (handle->minipro_reset_state) {
+		return handle->minipro_reset_state(handle);
+	}
+	fprintf(stderr, "%s: reset state not implemented\n", handle->model);
+	return EXIT_FAILURE;
+}
+
