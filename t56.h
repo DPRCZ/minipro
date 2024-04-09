@@ -28,5 +28,9 @@ int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 			uint32_t *device_id);
 int t56_get_ovc_status(minipro_handle_t *handle,
 			minipro_status_t *status, uint8_t *ovc);
+int t56_read_block(minipro_handle_t *handle, uint8_t type,
+			   uint32_t addr, uint8_t *buffer, size_t len);
+int t56_write_block(minipro_handle_t *handle, uint8_t type,
+			    uint32_t addr, uint8_t *buffer, size_t len);
 
 #endif

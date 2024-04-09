@@ -34,12 +34,31 @@
 #define T56_BEGIN_TRANS		0x03
 #define T56_END_TRANS		0x04
 #define T56_READID		0x05
+#define T56_READ_USER		 0x06
+#define T56_WRITE_USER		 0x07
+#define T56_READ_CFG		 0x08
+#define T56_WRITE_CFG		 0x09
+#define T56_WRITE_USER_DATA	 0x0A
+#define T56_READ_USER_DATA	 0x0B
+#define T56_WRITE_CODE		 0x0C
+#define T56_READ_CODE		 0x0D
+#define T56_ERASE		 0x0E
+#define T56_READ_DATA		 0x10
+#define T56_WRITE_DATA		 0x11
+#define T56_WRITE_LOCK		 0x14
+#define T56_READ_LOCK		 0x15
+#define T56_READ_CALIBRATION	 0x16
+#define T56_PROTECT_OFF		 0x18
+#define T56_PROTECT_ON		 0x19
+#define T56_READ_JEDEC		 0x1D
+#define T56_WRITE_JEDEC		 0x1E
 #define T56_WRITE_BITSTREAM 0x26
-
+#define T56_LOGIC_IC_TEST_VECTOR 0x28
+#define T56_AUTODETECT		 0x37
+#define T56_UNLOCK_TSOP48	 0x38
 #define T56_REQUEST_STATUS	0x39
 
 /* clang-format off */
-#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
 static const char t56_algo_table[][32] = {
 	"IIC24C",   "MW93ALG", "SPI25F", "AT45D",    "F29EE",	"W29F32P",
 	"ROM28P",   "ROM32P",  "ROM40P", "R28TO32P", "ROM24P",	"ROM44",
@@ -53,54 +72,64 @@ static const char t56_algo_table[][32] = {
 };
 
 /* clang-format on */
+#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+
 int t56_begin_transaction(minipro_handle_t *handle)
 {
 	uint8_t msg[64];
 	uint8_t ovc;
 	device_t *device = handle->device;
-
-	/* Get the required FPGA bitstream algorithm */
-	uint8_t algo_number = (uint8_t)(device->variant >> 8);
-	if (algo_number == 0 || device->protocol_id > ALGO_COUNT ||
-	    !*t56_algo_table[device->protocol_id]) {
-		fprintf(stderr, "Invalid algorithm number found.\n");
-		return EXIT_FAILURE;
-	}
-
-	db_data_t db_data;
-	memset(&db_data, 0, sizeof(db_data));
-	db_data.algo_path = handle->cmdopts->algo_path;
-
-	char algo_name[64];
-	snprintf(algo_name, sizeof(algo_name), "%s%02X",
-		 t56_algo_table[device->protocol_id - 1], algo_number);
-	db_data.device_name = algo_name;
-
-	algorithm_t *algorithm = get_algorithm(&db_data);
-	if (!algorithm){
-		fprintf(stderr, "T56 initialization error.\n");
-		return EXIT_FAILURE;
-	}
-
-	fprintf(stderr, "Using %s algorithm..\n", db_data.device_name);;
+	static uint8_t bitstream_uploaded = 0;
 
 	memset(msg, 0x00, sizeof(msg));
 
-	/* Send the bitstream algorithm to the T56 */
-	msg[0] = T56_WRITE_BITSTREAM;
-	format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
-	if (msg_send(handle->usb_handle, msg, 8)){
+	/* Don't upload the bitstream again if we are in the same session */
+	if (!bitstream_uploaded) {
+		/* Get the required FPGA bitstream algorithm */
+		uint8_t algo_number = (uint8_t)(device->variant >> 8);
+		if (algo_number == 0 || device->protocol_id > ALGO_COUNT ||
+		    !*t56_algo_table[device->protocol_id]) {
+			fprintf(stderr, "Invalid algorithm number found.\n");
+			return EXIT_FAILURE;
+		}
+
+		db_data_t db_data;
+		memset(&db_data, 0, sizeof(db_data));
+		db_data.algo_path = handle->cmdopts->algo_path;
+
+		char algo_name[64];
+		snprintf(algo_name, sizeof(algo_name), "%s%02X",
+			 t56_algo_table[device->protocol_id - 1], algo_number);
+		db_data.device_name = algo_name;
+
+		algorithm_t *algorithm = get_algorithm(&db_data);
+		if (!algorithm) {
+			fprintf(stderr, "T56 initialization error.\n");
+			return EXIT_FAILURE;
+		}
+
+		fprintf(stderr, "Using %s algorithm..\n", db_data.device_name);
+
+		/* Send the bitstream algorithm to the T56 */
+		msg[0] = T56_WRITE_BITSTREAM;
+		format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
+		if (msg_send(handle->usb_handle, msg, 8)) {
+			free(algorithm->bitstream);
+			free(algorithm);
+			return EXIT_FAILURE;
+		}
+		if (msg_send(handle->usb_handle, algorithm->bitstream,
+			     algorithm->length)) {
+			free(algorithm->bitstream);
+			free(algorithm);
+			return EXIT_FAILURE;
+		}
 		free(algorithm->bitstream);
 		free(algorithm);
-		return EXIT_FAILURE;
-	}
-	if (msg_send(handle->usb_handle, algorithm->bitstream,
-		     algorithm->length)){
-		free(algorithm->bitstream);
-		free(algorithm);
-		return EXIT_FAILURE;
+		bitstream_uploaded = 1;
 	}
 
+	/* T56 FPGA was initialized, we can send the normal begin_transaction command */
 	if (!handle->device->flags.custom_protocol) {
 		msg[0] = T56_BEGIN_TRANS;
 		msg[1] = device->protocol_id;
@@ -168,6 +197,67 @@ int t56_end_transaction(minipro_handle_t *handle)
 	memset(msg, 0x00, sizeof(msg));
 	msg[0] = T56_END_TRANS;
 	return msg_send(handle->usb_handle, msg, sizeof(msg));
+	return EXIT_SUCCESS;
+}
+
+int t56_read_block(minipro_handle_t *handle, uint8_t type,
+			   uint32_t addr, uint8_t *buf, size_t len)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_read_block(handle, type, addr, buf, len);
+	}
+	uint8_t msg[64];
+
+	if (type == MP_CODE) {
+		type = T56_READ_CODE;
+	} else if (type == MP_DATA) {
+		type = T56_READ_DATA;
+	} else if (type == MP_USER) {
+		type = T56_READ_USER_DATA;
+	} else {
+		fprintf(stderr, "Unknown type for read_block (%d)\n", type);
+		return EXIT_FAILURE;
+	}
+
+	memset(msg, 0x00, sizeof(msg));
+	msg[0] = type;
+	/* msg[1] = 1; */
+	format_int(&(msg[2]), len, 2, MP_LITTLE_ENDIAN);
+	format_int(&(msg[4]), addr, 4, MP_LITTLE_ENDIAN);
+	if (msg_send(handle->usb_handle, msg, 8))
+		return EXIT_FAILURE;
+
+	return read_payload2(handle->usb_handle, buf, len, 0);
+}
+
+int t56_write_block(minipro_handle_t *handle, uint8_t type,
+			    uint32_t addr, uint8_t *buf, size_t len)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_write_block(handle, type, addr, buf, len);
+	}
+	uint8_t msg[64];
+
+	if (type == MP_CODE) {
+		type = T56_WRITE_CODE;
+	} else if (type == MP_DATA) {
+		type = T56_WRITE_DATA;
+	} else if (type == MP_USER) {
+		type = T56_WRITE_USER_DATA;
+	} else {
+		fprintf(stderr, "Unknown type for write_block (%d)\n", type);
+		return EXIT_FAILURE;
+	}
+
+	memset(msg, 0x00, sizeof(msg));
+	msg[0] = type;
+	format_int(&(msg[2]), len, 2, MP_LITTLE_ENDIAN);
+	format_int(&(msg[4]), addr, 4, MP_LITTLE_ENDIAN);
+	if (msg_send(handle->usb_handle, msg, 8))
+		return EXIT_FAILURE;
+	if (write_payload2(handle->usb_handle, buf,
+				handle->device->write_buffer_size, 0))
+		return EXIT_FAILURE; /* And payload to the endp.2 */
 	return EXIT_SUCCESS;
 }
 
