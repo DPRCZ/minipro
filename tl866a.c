@@ -1004,9 +1004,9 @@ int tl866a_firmware_update(minipro_handle_t *handle, const char *firmware)
 	}
 
 	if ((update_dat.a_crc32 !=
-	     ~crc32(a_firmware, sizeof(a_firmware), 0xFFFFFFFF)) ||
+	     ~crc_32(a_firmware, sizeof(a_firmware), 0xFFFFFFFF)) ||
 	    (update_dat.cs_crc32 !=
-	     ~crc32(cs_firmware, sizeof(cs_firmware), 0xFFFFFFFF))) {
+	     ~crc_32(cs_firmware, sizeof(cs_firmware), 0xFFFFFFFF))) {
 		fprintf(stderr, "%s crc error!\n", firmware);
 		return EXIT_FAILURE;
 	}

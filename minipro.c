@@ -58,7 +58,7 @@ uint32_t load_int(uint8_t *buffer, size_t size, uint8_t endianness)
 }
 
 /* Simple crc32 */
-uint32_t crc32(uint8_t *data, size_t size, uint32_t initial)
+uint32_t crc_32(uint8_t *data, size_t size, uint32_t initial)
 {
 	uint32_t i, j, crc;
 	crc = initial;

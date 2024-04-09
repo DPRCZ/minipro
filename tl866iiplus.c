@@ -701,12 +701,12 @@ int tl866iiplus_firmware_update(minipro_handle_t *handle, const char *firmware)
 	/* Note the order in which the crc is calculated! */
 	/* First the data blocks crc*/
 	if (blocks > 0) {
-		crc = crc32(update_dat + 1036, blocks * 272, crc);
+		crc = crc_32(update_dat + 1036, blocks * 272, crc);
 	}
 	/* Second the last block crc */
-	crc = crc32(update_dat + blocks * 272 + 1036, 2064, crc);
+	crc = crc_32(update_dat + blocks * 272 + 1036, 2064, crc);
 	/* And last the xortable+blocks_count crc */
-	crc = crc32(update_dat + 8, 1028, crc);
+	crc = crc_32(update_dat + 8, 1028, crc);
 	/* The computed CRC32 must match the File CRC from the offset 4 */
 	if (~crc != load_int(update_dat + 4, 4, MP_LITTLE_ENDIAN)) {
 		fprintf(stderr, "%s file CRC error!\n", firmware);
@@ -748,7 +748,7 @@ int tl866iiplus_firmware_update(minipro_handle_t *handle, const char *firmware)
 
 		/* After deobfuscating the address calculate the block
 		 * crc and compare */
-		if (crc32(update_dat + ptr + 4, 268, 0) !=
+		if (crc_32(update_dat + ptr + 4, 268, 0) !=
 		    load_int(update_dat + ptr, 4, MP_LITTLE_ENDIAN)) {
 			fprintf(stderr, "%s file CRC error!\n", firmware);
 			free(update_dat);
@@ -768,7 +768,7 @@ int tl866iiplus_firmware_update(minipro_handle_t *handle, const char *firmware)
 		xorptr += 4;
 	}
 	/* After deobfuscating the address calculate the block crc and compare */
-	if (crc32(update_dat + ptr + 4, 2060, 0) !=
+	if (crc_32(update_dat + ptr + 4, 2060, 0) !=
 	    load_int(update_dat + ptr, 4, MP_LITTLE_ENDIAN)) {
 		fprintf(stderr, "%s file CRC error!\n", firmware);
 		free(update_dat);
