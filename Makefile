@@ -58,8 +58,7 @@ else
 endif
 
 COMMON_OBJECTS=xml.o jedec.o ihex.o srec.o database.o bitbang.o prom.o \
-               minipro.o tl866a.o tl866iiplus.o t48.o t56.o version.o \
-               base64.o $(USB)
+               minipro.o tl866a.o tl866iiplus.o t48.o t56.o version.o $(USB)
 OBJECTS=$(COMMON_OBJECTS) main.o
 PROGS=minipro
 STATIC_LIB=libminipro.a
@@ -88,6 +87,7 @@ ifneq ($(OS),Windows_NT)
     zlib_CFLAGS := $(shell $(PKG_CONFIG) --cflags zlib)
     libusb_LIBS := $(shell $(PKG_CONFIG) --libs libusb-1.0)
     zlib_LIBS := $(shell $(PKG_CONFIG) --libs zlib)
+    base64_LIBS := -lb64
     ifeq ($(libusb_LIBS),)
         ERROR := $(error "libusb-1.0 not found")
     endif
@@ -95,7 +95,7 @@ ifneq ($(OS),Windows_NT)
         ERROR := $(error "zlib not found")
     endif
     override CFLAGS += $(libusb_CFLAGS) $(zlib_CFLAGS)
-    override LIBS += $(libusb_LIBS) $(zlib_LIBS) $(EXTRA_LIBS)
+    override LIBS += $(libusb_LIBS) $(zlib_LIBS) $(base64_LIBS) $(EXTRA_LIBS)
 else
 # Add Windows libs here
 override LIBS += -lsetupapi \

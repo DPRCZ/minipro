@@ -24,8 +24,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <zlib.h>
+#include <b64/cdecode.h>
 #include "xml.h"
-#include "base64.h"
 #include "database.h"
 
 #ifdef _WIN32
