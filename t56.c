@@ -201,7 +201,7 @@ int t56_read_block(minipro_handle_t *handle, uint8_t type,
 	if (msg_send(handle->usb_handle, msg, 8))
 		return EXIT_FAILURE;
 
-	return read_payload2(handle->usb_handle, buf, len, 0);
+	return msg_recv(handle->usb_handle, buf, len);
 }
 
 int t56_write_block(minipro_handle_t *handle, uint8_t type,
@@ -229,9 +229,9 @@ int t56_write_block(minipro_handle_t *handle, uint8_t type,
 	format_int(&(msg[4]), addr, 4, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 8))
 		return EXIT_FAILURE;
-	if (write_payload2(handle->usb_handle, buf,
-				handle->device->write_buffer_size, 0))
-		return EXIT_FAILURE; /* And payload to the endp.2 */
+	if (msg_send(handle->usb_handle, buf,
+				handle->device->write_buffer_size))
+		return EXIT_FAILURE;
 	return EXIT_SUCCESS;
 }
 
