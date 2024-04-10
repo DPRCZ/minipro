@@ -327,23 +327,19 @@ static size_t get_chip_count(Memblock *memblock)
 }
 
 /* Search the chip name in a comma separated names */
-static const char *search_chip_name(Memblock *memblock, const char *name)
+static char *search_chip_name(Memblock *memblock, const char *name)
 {
-	const char *token = memblock->b;
-	const char *end = memblock->b + memblock->z;
-
-	while (token < end) {
-		char *comma = strchr(token, ',');
-		if (comma != NULL) {
-			*comma = '\0';
+	char *list = strndup((char *)memblock->b, memblock->z);
+	char *token = strtok(list, ",");
+	while (token) {
+		if (!strcasecmp(token, name)){
+		  char *name = strdup(token);
+		  free(list);
+		  return name;
 		}
-		if (!strcasecmp(name, token))
-			return token;
-		if (comma != NULL)
-			token = comma + 1;
-		else
-			break;
+		token = strtok(NULL, ",");
 	}
+	free(list);
 	return NULL;
 }
 
@@ -1167,12 +1163,13 @@ static int device_callback(int type, const char *tag, size_t taglen,
 			}
 
 			/* Search and load device (-p and -d) */
-			const char *name = search_chip_name(
+			char *name = search_chip_name(
 				&mb_name, sm->db_data->device_name);
 			if (name) {
 				if (sm->found_count && !sm->custom)
 					return XML_OK;
 				strcpy(sm->device->name, name);
+				free(name);
 				if (load_device(sm->db_data, tag, taglen,
 						sm->device,
 						sm->db_data->version))
