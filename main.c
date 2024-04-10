@@ -429,7 +429,7 @@ void print_device_info_and_exit(cmdopts_t *cmdopts)
 		/* Availability */
 		fprintf(stderr, "Available on: ");
 		if (handle->version != MP_TL866IIPLUS) {
-			fprintf(stderr, "TL866A/CS");
+			fprintf(stderr, "TL866A/CS\n");
 		} else {
 			int c = 0;
 			int all = (!device->tl866_only && !device->t48_only &&
