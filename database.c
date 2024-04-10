@@ -177,6 +177,24 @@ typedef struct state_machine_a {
 	db_data_t *db_data;
 } state_machine_a_t;
 
+/* T56 algorithm prefixes table.
+ * The final name is computed at runtime.
+ */
+static const char t56_algo_table[][32] = {
+	"IIC24C",   "MW93ALG", "SPI25F", "AT45D",    "F29EE",	"W29F32P",
+	"ROM28P",   "ROM32P",  "ROM40P", "R28TO32P", "ROM24P",	"ROM44",
+	"EE28C32P", "RAM32",   "SPI25F", "28F32P",   "FWH",	     "T48",
+	"T40A",	   	"T40B",    "T88V",	 "PIC32X",   "P18F87J", "P16F",
+	"P18F2",    "P16F5X",  "P16CX",	 "",	     "ATMGA_",	"ATTINY_",
+	"AT89P20_", "",	       "AT89C_", "P87C_",    "SST89_",	"W78E_",
+	"",	        "",	       "ROM24P", "ROM28P",   "RAM32",	"GAL16",
+	"GAL20",	"GAL22",   "NAND_",	 "PIC32X",   "RAM36",	"KB90",
+	"EMMC_",    "VGA_",    "CPLD_",	 "GEN_",     "ITE_"
+};
+
+#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+
+
 static int parse_profiles(state_machine_p_t *);
 
 /* return pin count from package_details */
@@ -1586,26 +1604,43 @@ pin_map_t *get_pin_map(db_data_t *db_data)
 }
 
 /* Return an algorithm_t structure */
-algorithm_t *get_algorithm(db_data_t *db_data)
+int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t vopt)
 {
-	if (!db_data->device_name) {
-		fprintf(stderr, "No algorithm is available for this chip.\n");
-		return NULL;
+	algorithm_t *algorithm = &device->algorithm;
+
+	uint8_t algo_number = (uint8_t)(device->variant >> 8);
+	if (algo_number == 0 || device->protocol_id > ALGO_COUNT ||
+	    !*t56_algo_table[device->protocol_id]) {
+		fprintf(stderr, "Invalid algorithm number found.\n");
+		return EXIT_FAILURE;
 	}
 
-	/* Set the algorithm database for search */
-	db_data->version = ALGORITHM_DATABASE;
+	snprintf(algorithm->name, NAME_MAX, "%s%02X",
+		 t56_algo_table[device->protocol_id - 1], algo_number);
+
+	/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
+	if (icsp && (device->chip_info == ATMEL_AVR ||
+			     device->chip_info == ATMEL_AT90)) {
+		strcat(algorithm->name, "11S");
+	}
+
+	/* Set the database for algorithm search */
+	db_data_t db_data;
+	const char *algo_name = algorithm->name;
+	db_data.version = ALGORITHM_DATABASE;
+	db_data.algo_path = algo_path;
+	db_data.device_name = algo_name;
+
 	state_machine_a_t sm;
 	memset(&sm, 0, sizeof(sm));
-	sm.db_data = db_data;
+	sm.db_data = &db_data;
 
-	/*Search the desired algorithm inthe xml database*/
+	/* Search the desired algorithm */
 	if (parse_algorithms(&sm))
-		return NULL;
+		return EXIT_FAILURE;
 	if (!sm.base64_data) {
-		fprintf(stderr, "No algorithm %s was found.\n",
-			db_data->device_name);
-		return NULL;
+		fprintf(stderr, "No algorithm %s was found.\n", algo_name);
+		return EXIT_FAILURE;
 	}
 
 	/* We have the base64 string let's decode it */
@@ -1613,20 +1648,18 @@ algorithm_t *get_algorithm(db_data_t *db_data)
 	char *gzip = malloc(out_size * 4 / 3 + 8);
 	if (!gzip) {
 		free(sm.base64_data);
-		return NULL;
+		fprintf(stderr, "Out of memory!\n");
+		return EXIT_FAILURE;
 	}
 
 	base64_decodestate ds;
 	base64_init_decodestate(&ds);
 	out_size = base64_decode_block(sm.base64_data, out_size, gzip, &ds);
 	free(sm.base64_data);
-	if (!gzip)
-		return NULL;
-
-	/* Allocate algorithm structure */
-	algorithm_t *algorithm = malloc(sizeof(algorithm_t));
-	if (!algorithm)
-		return NULL;
+	if (!out_size) {
+		fprintf(stderr, "Algorithm %s base64 decoding error!\n", algo_name);
+		return EXIT_FAILURE;
+	}
 
 	/* Get the gzip uncompressed size */
 	uint32_t usize =
@@ -1637,8 +1670,8 @@ algorithm_t *get_algorithm(db_data_t *db_data)
 
 	algorithm->bitstream = malloc(algorithm->length);
 	if (!algorithm->bitstream) {
-		free(algorithm);
-		return NULL;
+		fprintf(stderr, "Out of memory!\n");
+		return EXIT_FAILURE;
 	}
 
 	/*Uncompress data using zlib*/
@@ -1647,30 +1680,22 @@ algorithm_t *get_algorithm(db_data_t *db_data)
 			    .next_out = (Bytef *)algorithm->bitstream,
 			    .avail_out = algorithm->length };
 
-	if (inflateInit2(&stream, MAX_WBITS + 16) != Z_OK) {
+	int inf_init_err = inflateInit2(&stream, MAX_WBITS + 16);
+	int inf_err = inflate(&stream, Z_FINISH);
+	int inf_end_err = inflateEnd(&stream);
+	if (inf_init_err != Z_OK ||
+	    (inf_err != Z_OK && inf_err != Z_STREAM_END) ||
+	    inf_end_err != Z_OK) {
 		free(algorithm->bitstream);
-		free(algorithm);
-		return NULL;
-	}
-
-	int error = inflate(&stream, Z_FINISH);
-	if (error != Z_OK && error != Z_STREAM_END) {
-		free(algorithm->bitstream);
-		free(algorithm);
-		return NULL;
-	}
-
-	if (inflateEnd(&stream) != Z_OK) {
-		free(algorithm->bitstream);
-		free(algorithm);
-		return NULL;
+		fprintf(stderr, "Algorithm %s uncompression error.\n",
+			algo_name);
+		return EXIT_FAILURE;
 	}
 
 	/* Check if gzip inflate was ok */
 	if (stream.total_out != usize) {
 		free(algorithm->bitstream);
-		free(algorithm);
-		return NULL;
+		return EXIT_FAILURE;
 	}
 
 	/* Check for algorithm integrity */
@@ -1681,11 +1706,10 @@ algorithm_t *get_algorithm(db_data_t *db_data)
 				   0xFFFFFFFF);
 
 	if (file_crc != data_crc) {
-		fprintf(stderr, "Corrupted %s algorithm.\n",
-			db_data->device_name);
+		fprintf(stderr, "Corrupted %s algorithm. Bad CRC.\n",
+				algo_name);
 		free(algorithm->bitstream);
-		free(algorithm);
-		return NULL;
+		return EXIT_FAILURE;
 	}
-	return algorithm;
+	return EXIT_SUCCESS;
 }

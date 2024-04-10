@@ -167,6 +167,12 @@ typedef struct pin_driver {
 	uint8_t vpp;
 } pin_driver_t;
 
+typedef struct algorithm {
+	char name[NAME_LEN];
+	uint8_t *bitstream;
+	size_t length;
+} algorithm_t;
+
 typedef struct device {
 	char name[NAME_LEN];
 	uint32_t chip_type;
@@ -196,6 +202,7 @@ typedef struct device {
 	uint8_t tl866_only; /* chip available only for TL866II */
 	uint8_t t48_only;     /* chip available only for T48 */
 	uint8_t t56_only;     /* chip available only for T56 */
+	algorithm_t algorithm; /* Algorithm structure */
 } device_t;
 
 typedef struct minipro_status {
@@ -263,6 +270,10 @@ typedef struct minipro_handle {
 
 	device_t *device;
 	uint8_t icsp;
+	enum {
+		V_1V8 = 0,
+		V_3V3
+	} vopt;
 
 	void *usb_handle;
 	cmdopts_t *cmdopts;
