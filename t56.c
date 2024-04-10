@@ -266,6 +266,26 @@ int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 	return EXIT_SUCCESS;
 }
 
+int t56_erase(minipro_handle_t *handle)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_erase(handle);
+	}
+	uint8_t msg[64];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_ERASE;
+
+	fuse_decl_t *fuses = (fuse_decl_t *)handle->device->config;
+	if (!fuses || fuses->num_fuses)
+		msg[2] = 1;
+	else
+		msg[2] = (fuses->num_fuses > 4) ? 1 : fuses->num_fuses;
+
+	if (msg_send(handle->usb_handle, msg, 15))
+		return EXIT_FAILURE;
+	memset(msg, 0x00, sizeof(msg));
+	return msg_recv(handle->usb_handle, msg, sizeof(msg));
+}
 
 int t56_get_ovc_status(minipro_handle_t *handle,
 		minipro_status_t *status, uint8_t *ovc)

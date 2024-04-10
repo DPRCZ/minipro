@@ -32,5 +32,6 @@ int t56_read_block(minipro_handle_t *handle, uint8_t type,
 			   uint32_t addr, uint8_t *buffer, size_t len);
 int t56_write_block(minipro_handle_t *handle, uint8_t type,
 			    uint32_t addr, uint8_t *buffer, size_t len);
+int t56_erase(minipro_handle_t *handle);
 
 #endif
