@@ -374,7 +374,7 @@ static int load_mem_device(db_data_t *db_data, const char *xml_device,
 	err += get_attr_value(xml_device, size, "write_buffer_size",
 			      &write_buffer_size);
 	device->read_buffer_size = (uint16_t)read_bufer_size;
-	device->write_buffer_size = (uint16_t)device->write_buffer_size;
+	device->write_buffer_size = (uint16_t)write_buffer_size;
 	err += get_attr_value(xml_device, size, "code_memory_size",
 			      &device->code_memory_size);
 	err += get_attr_value(xml_device, size, "data_memory_size",
