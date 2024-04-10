@@ -1663,7 +1663,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t
 		load_int((uint8_t *)(gzip + out_size - 4), 4, MP_LITTLE_ENDIAN);
 
 	/* Round up to the nearest 256 byte multiple  */
-	algorithm->length = usize + 0x100 - (usize % 0x100);
+	algorithm->length = usize + 0x200 - (usize % 0x200);
 
 	algorithm->bitstream = malloc(algorithm->length);
 	if (!algorithm->bitstream) {
