@@ -181,15 +181,16 @@ typedef struct state_machine_a {
  * The final name is computed at runtime.
  */
 static const char t56_algo_table[][32] = {
-	"IIC24C",   "MW93ALG", "SPI25F", "AT45D",    "F29EE",	"W29F32P",
-	"ROM28P",   "ROM32P",  "ROM40P", "R28TO32P", "ROM24P",	"ROM44",
-	"EE28C32P", "RAM32",   "SPI25F", "28F32P",   "FWH",	     "T48",
-	"T40A",	   	"T40B",    "T88V",	 "PIC32X",   "P18F87J", "P16F",
-	"P18F2",    "P16F5X",  "P16CX",	 "",	     "ATMGA_",	"ATTINY_",
-	"AT89P20_", "",	       "AT89C_", "P87C_",    "SST89_",	"W78E_",
-	"",	        "",	       "ROM24P", "ROM28P",   "RAM32",	"GAL16",
-	"GAL20",	"GAL22",   "NAND_",	 "PIC32X",   "RAM36",	"KB90",
-	"EMMC_",    "VGA_",    "CPLD_",	 "GEN_",     "ITE_"
+	"TTL1",	   "TTL2",    "IIC24C",	  "MW93ALG", "SPI25F", "AT45D",
+	"F29EE",   "W29F32P", "ROM28P",	  "ROM32P",  "ROM40P", "R28TO32P",
+	"ROM24P",  "ROM44",   "EE28C32P", "RAM32",   "SPI25F", "28F32P",
+	"FWH",	   "T48",     "T40A",	  "T40B",    "T88V",   "PIC32X",
+	"P18F87J", "P16F",    "P18F2",	  "P16F5X",  "P16CX",  "",
+	"ATMGA_",  "ATTINY_", "AT89P20_", "",	     "AT89C_", "P87C_",
+	"SST89_",  "W78E_",   "",	  	  "",	     "ROM24P", "ROM28P",
+	"RAM32",   "GAL16",   "GAL20",	  "GAL22",   "NAND_",  "PIC32X",
+	"RAM36",   "KB90",    "EMMC_",	  "VGA_",    "CPLD_",  "GEN_",
+	"ITE_"
 };
 
 #define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
@@ -1601,23 +1602,31 @@ pin_map_t *get_pin_map(db_data_t *db_data)
 }
 
 /* Return an algorithm_t structure */
-int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t vopt)
+int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
+		  uint8_t vopt, size_t offset)
 {
 	algorithm_t *algorithm = &device->algorithm;
-
 	uint8_t algo_number = (uint8_t)(device->variant >> 8);
-	if (algo_number == 0 || device->protocol_id > ALGO_COUNT ||
+
+	if (device->protocol_id > ALGO_COUNT ||
 	    !*t56_algo_table[device->protocol_id]) {
 		fprintf(stderr, "Invalid algorithm number found.\n");
 		return EXIT_FAILURE;
 	}
 
-	snprintf(algorithm->name, NAME_MAX, "%s%02X",
-		 t56_algo_table[device->protocol_id - 1], algo_number);
+	/* If not a logic chip add +1 offset to the lookup table */
+	if (device->chip_type != MP_LOGIC) {
+		snprintf(algorithm->name, NAME_LEN, "%s%02X",
+			 t56_algo_table[device->protocol_id + 1],
+			 algo_number);
+	} else {
+		strncpy(algorithm->name,
+			t56_algo_table[device->protocol_id + algo_number], NAME_LEN);
+	}
 
 	/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
 	if (icsp && (device->chip_info == ATMEL_AVR ||
-			     device->chip_info == ATMEL_AT90)) {
+		     device->chip_info == ATMEL_AT90)) {
 		strcat(algorithm->name, "11S");
 	}
 
@@ -1654,18 +1663,19 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t
 	out_size = base64_decode_block(sm.base64_data, out_size, gzip, &ds);
 	free(sm.base64_data);
 	if (!out_size) {
-		fprintf(stderr, "Algorithm %s base64 decoding error!\n", algo_name);
+		fprintf(stderr, "Algorithm %s base64 decoding error!\n",
+			algo_name);
 		return EXIT_FAILURE;
 	}
 
-	/* Get the gzip uncompressed size */
-	uint32_t usize =
-		load_int((uint8_t *)(gzip + out_size - 4), 4, MP_LITTLE_ENDIAN);
+	/* Get the gzip uncompressed size and add the offset length */
+	uint32_t usize = offset + load_int((uint8_t *)(gzip + out_size - 4), 4,
+					   MP_LITTLE_ENDIAN);
 
 	/* Round up to the nearest 512 byte multiple  */
 	algorithm->length = usize + 0x200 - (usize % 0x200);
 
-	algorithm->bitstream = malloc(algorithm->length);
+	algorithm->bitstream = calloc(1, algorithm->length);
 	if (!algorithm->bitstream) {
 		fprintf(stderr, "Out of memory!\n");
 		return EXIT_FAILURE;
@@ -1674,7 +1684,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t
 	/*Uncompress data using zlib*/
 	z_stream stream = { .next_in = (Bytef *)gzip,
 			    .avail_in = (uInt)out_size,
-			    .next_out = (Bytef *)algorithm->bitstream,
+			    .next_out = (Bytef *)algorithm->bitstream + offset,
 			    .avail_out = algorithm->length };
 
 	int inf_init_err = inflateInit2(&stream, MAX_WBITS + 16);
@@ -1690,21 +1700,22 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp, uint8_t
 	}
 
 	/* Check if gzip inflate was ok */
-	if (stream.total_out != usize) {
+	if (stream.total_out != usize - offset) {
 		free(algorithm->bitstream);
 		return EXIT_FAILURE;
 	}
 
 	/* Check for algorithm integrity */
-	uint32_t file_crc = load_int(algorithm->bitstream + ALGO_CRC_OFFSET, 4,
-				     MP_LITTLE_ENDIAN);
-	uint32_t data_crc = crc_32(algorithm->bitstream + ALGO_DATA_OFFSET,
-				   usize - ALGO_DATA_OFFSET,
-				   0xFFFFFFFF);
+	uint32_t file_crc =
+		load_int(algorithm->bitstream + ALGO_CRC_OFFSET + offset, 4,
+			 MP_LITTLE_ENDIAN);
+	uint32_t data_crc =
+		crc_32(algorithm->bitstream + ALGO_DATA_OFFSET + offset,
+		       usize - ALGO_DATA_OFFSET - offset, 0xFFFFFFFF);
 
 	if (file_crc != data_crc) {
 		fprintf(stderr, "Corrupted %s algorithm. Bad CRC.\n",
-				algo_name);
+			algo_name);
 		free(algorithm->bitstream);
 		return EXIT_FAILURE;
 	}

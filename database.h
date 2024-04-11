@@ -75,7 +75,7 @@ typedef struct db_data {
 } db_data_t;
 
 pin_map_t *get_pin_map(db_data_t *);
-int get_algorithm(device_t *, const char *, uint8_t, uint8_t);
+int get_algorithm(device_t *, const char *, uint8_t, uint8_t, size_t);
 int print_chip_count(db_data_t *);
 int list_devices(db_data_t *);
 device_t *get_device_by_name(db_data_t *);

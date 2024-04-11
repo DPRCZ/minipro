@@ -47,4 +47,5 @@ int t56_read_jedec_row(minipro_handle_t *handle, uint8_t *buffer,
 			       uint8_t row, uint8_t flags, size_t size);
 int t56_protect_off(minipro_handle_t *handle);
 int t56_protect_on(minipro_handle_t *handle);
+int t56_logic_ic_test(minipro_handle_t *handle);
 #endif

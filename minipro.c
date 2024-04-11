@@ -260,6 +260,7 @@ minipro_handle_t *minipro_open(uint8_t verbose)
 		handle->minipro_get_ovc_status = t56_get_ovc_status;
 		handle->minipro_read_jedec_row = t56_read_jedec_row;
 		handle->minipro_write_jedec_row = t56_write_jedec_row;
+		handle->minipro_logic_ic_test = t56_logic_ic_test;
 		break;
 	}
 	return handle;

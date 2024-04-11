@@ -31,9 +31,9 @@
 #include "bitbang.h"
 #include "usb.h"
 
-#define T56_BEGIN_TRANS		0x03
-#define T56_END_TRANS		0x04
-#define T56_READID		0x05
+#define T56_BEGIN_TRANS		 0x03
+#define T56_END_TRANS		 0x04
+#define T56_READID		 0x05
 #define T56_READ_USER		 0x06
 #define T56_WRITE_USER		 0x07
 #define T56_READ_CFG		 0x08
@@ -52,12 +52,13 @@
 #define T56_PROTECT_ON		 0x19
 #define T56_READ_JEDEC		 0x1D
 #define T56_WRITE_JEDEC		 0x1E
-#define T56_WRITE_BITSTREAM 0x26
+#define T56_WRITE_BITSTREAM	 0x26
 #define T56_LOGIC_IC_TEST_VECTOR 0x28
+#define T56_WRITE_BITSTREAM2	 0x2A
 #define T56_AUTODETECT		 0x37
 #define T56_UNLOCK_TSOP48	 0x38
-#define T56_REQUEST_STATUS	0x39
-#define T56_PIN_DETECTION	0x3E
+#define T56_REQUEST_STATUS	 0x39
+#define T56_PIN_DETECTION	 0x3E
 
 /* Device algorithm numbers used to autodetect 8/16 pin SPI devices.
  * This will select algorithm 'SPI25F11' and 'SPI25F21'
@@ -79,18 +80,49 @@ static int t56_send_bitstream(minipro_handle_t *handle)
 	if (bitstream_uploaded)
 		return EXIT_SUCCESS;
 
+	/* Get the required FPGA bitstream algorithm
+	* For logic chips it is required to send two consecutive
+	*  bitstream algorithms, 'TTL1' and 'TTL2'
+	*/
 	device_t *device = handle->device;
+	if (device->chip_type == MP_LOGIC) {
+		fprintf(stderr, "Using LOGIC algorithm..\n");
+		device->protocol_id = 0x00;
+		for (int i = 0; i < 2; i++) {
+			/* Choose 'TTL1' or 'TTL2' bitstream */
+			handle->device->variant = i << 8;
+			if (get_algorithm(device, handle->cmdopts->algo_path,
+					  handle->icsp, handle->vopt, 8))
+				return EXIT_FAILURE;
 
-	/* Get the required FPGA bitstream algorithm */
-	if (get_algorithm(device, handle->cmdopts->algo_path, handle->icsp,
-			  handle->vopt)) {
-		return EXIT_FAILURE;
+			/* Use multipart bitstream sending protocol */
+			device->algorithm.bitstream[0] = T56_WRITE_BITSTREAM2;
+			device->algorithm.bitstream[1] = i ? 0 : 1;
+			format_int(&device->algorithm.bitstream[4],
+				   handle->device->algorithm.length, 4,
+				   MP_LITTLE_ENDIAN);
+
+			if (msg_send(handle->usb_handle,
+				     device->algorithm.bitstream,
+				     device->algorithm.length)) {
+				free(device->algorithm.bitstream);
+				return EXIT_FAILURE;
+			}
+			free(handle->device->algorithm.bitstream);
+		}
+		return EXIT_SUCCESS;
 	}
 
-	algorithm_t *algorithm = &device->algorithm;
-	fprintf(stderr, "Using %s algorithm..\n", algorithm->name);
+	/* Normal devices algorithm handling */
+	if (get_algorithm(device, handle->cmdopts->algo_path,
+			  handle->icsp, handle->vopt, 0))
+		return EXIT_FAILURE;
+
+	fprintf(stderr, "Using %s algorithm..\n",
+		device->algorithm.name);
 
 	/* Send the bitstream algorithm to the T56 */
+	algorithm_t *algorithm = &device->algorithm;
 	memset(msg, 0x00, sizeof(msg));
 	msg[0] = T56_WRITE_BITSTREAM;
 	format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
@@ -116,8 +148,9 @@ int t56_begin_transaction(minipro_handle_t *handle)
 	uint8_t ovc;
 	device_t *device = handle->device;
 
-	if (t56_send_bitstream(handle)){
-		free(handle->device->algorithm.bitstream);
+	memset(msg, 0x00, sizeof(msg));
+
+	if (t56_send_bitstream(handle)) {
 		fprintf(stderr, "An error occurred while sending bitstream.\n");
 		return EXIT_FAILURE;
 	}
@@ -180,7 +213,6 @@ int t56_begin_transaction(minipro_handle_t *handle)
 	return EXIT_SUCCESS;
 }
 
-
 int t56_end_transaction(minipro_handle_t *handle)
 {
 	if (handle->device->flags.custom_protocol) {
@@ -221,7 +253,7 @@ int t56_read_block(minipro_handle_t *handle, uint8_t type,
 		return EXIT_FAILURE;
 
 	/* T56 off by one firmware bug bug
-	 * Pass a larger buffer, otherwise the libusb will overflow.
+	 * Pass a larger buffer, otherwise libusb will overflow.
 	 */
 	return msg_recv(handle->usb_handle, buf, len + 16);
 }
@@ -429,7 +461,6 @@ int t56_protect_on(minipro_handle_t *handle)
 	return msg_send(handle->usb_handle, msg, sizeof(msg));
 }
 
-
 int t56_erase(minipro_handle_t *handle)
 {
 	if (handle->device->flags.custom_protocol) {
@@ -510,3 +541,148 @@ int t56_read_jedec_row(minipro_handle_t *handle, uint8_t *buffer,
 	return EXIT_SUCCESS;
 }
 
+/* Pull: 0=Pull-up, 1=Pull-down */
+static uint8_t *do_ic_test(minipro_handle_t *handle, int pull)
+{
+	uint8_t *vector = handle->device->vectors;
+	uint8_t msg[32];
+	uint8_t *result;
+	uint8_t pin_count = handle->device->package_details.pin_count;
+
+	result = calloc(pin_count, handle->device->vector_count);
+	if (!result)
+		return NULL;
+
+	uint8_t *out = result;
+	int n;
+	for (n = 0; n < handle->device->vector_count; n++) {
+		memset(msg, 0xff, 32);
+
+		msg[0] = T56_LOGIC_IC_TEST_VECTOR;
+		msg[1] = handle->device->voltages.vcc;
+		msg[1] |= pull << 7; /* Set the pull-up/pull-down */
+		format_int(&msg[2], pin_count, 2, MP_LITTLE_ENDIAN);
+		format_int(&msg[4], n, 4, MP_LITTLE_ENDIAN);
+
+		int i;
+		/* Pack the vector to 2 pin/byte */
+		for (i = 0; i < handle->device->package_details.pin_count;
+		     i++) {
+			if (i & 1)
+				msg[8 + i / 2] |= *vector << 4;
+			else
+				msg[8 + i / 2] = *vector;
+			vector++;
+		}
+
+		/* Send the test vector and read the pin status */
+		if (msg_send(handle->usb_handle, msg, sizeof(msg))) {
+			free(result);
+			return NULL;
+		}
+		if (msg_recv(handle->usb_handle, msg, 65)) {
+			free(result);
+			return NULL;
+		}
+
+		/* Unpack the result from 2 pin/byte to 1 pin/byte */
+		for (i = 0; i < handle->device->package_details.pin_count; i++)
+			*out++ = (msg[8 + i / 2] >> (4 * (i & 1))) & 0xf;
+	}
+
+	return result;
+}
+
+/* Performing a logic test. This is accomplished in two steps.
+ * The first step will set a pull-up resistor on all chip outputs (L, H, Z).
+ * The second step will set a pull-down resistor on all chip outputs.
+ * According to the vector table then each output is compared against the two
+ * result array. Considering the weak pull-up/pull-down resistors we can detect
+ * L(low) state as 0 in both steps, H(high) state as 1 in both steps and
+ * Z(high impedance) state as 1 in step 1 when the pull-up is activated and
+ * 0 in step 2 when the pull-down is activated.
+ * While for chips with open collector/open drain output we need to perform
+ * these two steps to detect the Z state, for chips with totem-pole outputs
+ * this is not really necessary but, sometimes internal issues can be
+ * detected this way like burned H side or L side output transistors.
+ * The C (clock) state is performed in firmware by first pulsing the pin
+ * marked as C and then all pins are read back.
+ * The X (don't care) state will leave the pin unconnected.
+ * The V (VCC) and G (Ground) state will designate the power supply pins.
+ */
+
+int t56_logic_ic_test(minipro_handle_t *handle)
+{
+	uint8_t *vector = handle->device->vectors;
+	uint8_t *first_step = NULL;
+	uint8_t *second_step = NULL;
+	int ret = EXIT_FAILURE;
+
+	/* Set the FPGA before testing */
+	if (t56_send_bitstream(handle)){
+		fprintf(stderr, "An error occurred while sending bitstream.\n");
+		return EXIT_FAILURE;
+	}
+
+	if (!(first_step = do_ic_test(handle, 0))) { /* Pull-up active */
+		fprintf(stderr,
+			"Error running the first step of logic test.\n");
+	} else if (!(second_step = do_ic_test(handle, 1))) { /* Pull-down active */
+		fprintf(stderr,
+			"Error running the second step of logic test.\n");
+	} else {
+		int errors = 0, err;
+		static const char pst[] = "01LHCZXGV";
+		size_t n = 0;
+
+		printf("      ");
+		for (int pin = 1;
+		     pin <= handle->device->package_details.pin_count; pin++)
+			printf("%-3d", pin);
+		putchar('\n');
+
+		for (int i = 0; i < handle->device->vector_count; i++) {
+			printf("%04d: ", i);
+			for (int pin = 0;
+			     pin < handle->device->package_details.pin_count;
+			     pin++) {
+				err = 0;
+				switch (vector[n]) {
+				case LOGIC_L: /* Pin must be 0 in both steps */
+					if (first_step[n] || second_step[n])
+						err = 1;
+					break;
+				case LOGIC_H: /* Pin must be 1 in both steps */
+					if (!first_step[n] || !second_step[n])
+						err = 1;
+					break;
+				case LOGIC_Z: /* Pin must be 1 in step 1 and 0 in step 2 */
+					if (!first_step[n] || second_step[n])
+						err = 1;
+					break;
+				}
+				printf("%s%c%c ", err ? "\e[0;91m" : "\e[0m",
+				       pst[vector[n]], err ? '-' : ' ');
+				errors += err;
+				n++;
+			}
+			printf("\e[0m\n");
+		}
+
+		if (errors) {
+			fprintf(stderr,
+				"Logic test failed: %d errors encountered.\n",
+				errors);
+		} else {
+			fprintf(stderr, "Logic test successful.\n");
+			ret = EXIT_SUCCESS;
+		}
+	}
+
+	free(second_step);
+	free(first_step);
+	if (t56_end_transaction(handle))
+		return EXIT_FAILURE;
+
+	return ret;
+}
