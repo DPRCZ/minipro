@@ -472,3 +472,41 @@ int t56_get_ovc_status(minipro_handle_t *handle,
 	return EXIT_SUCCESS;
 }
 
+int t56_write_jedec_row(minipro_handle_t *handle, uint8_t *buffer,
+				uint8_t row, uint8_t flags, size_t size)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_write_jedec_row(handle, buffer, row, flags, size);
+	}
+	uint8_t msg[64];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_WRITE_JEDEC;
+	msg[1] = handle->device->protocol_id;
+	msg[2] = size;
+	msg[4] = row;
+	msg[5] = flags;
+	memcpy(&msg[8], buffer, (size + 7) / 8);
+	return msg_send(handle->usb_handle, msg, 64);
+}
+
+int t56_read_jedec_row(minipro_handle_t *handle, uint8_t *buffer,
+			       uint8_t row, uint8_t flags, size_t size)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_read_jedec_row(handle, buffer, row, flags, size);
+	}
+	uint8_t msg[32];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_READ_JEDEC;
+	msg[1] = handle->device->protocol_id;
+	msg[2] = size;
+	msg[4] = row;
+	msg[5] = flags;
+	if (msg_send(handle->usb_handle, msg, 8))
+		return EXIT_FAILURE;
+	if (msg_recv(handle->usb_handle, msg, 32))
+		return EXIT_FAILURE;
+	memcpy(buffer, msg, (size + 7) / 8);
+	return EXIT_SUCCESS;
+}
+
