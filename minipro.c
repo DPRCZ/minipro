@@ -248,6 +248,7 @@ minipro_handle_t *minipro_open(uint8_t verbose)
 		handle->minipro_begin_transaction = t56_begin_transaction;
 		handle->minipro_end_transaction = t56_end_transaction;
 		handle->minipro_get_chip_id = t56_get_chip_id;
+		handle->minipro_spi_autodetect = t56_spi_autodetect;
 		handle->minipro_get_ovc_status = t56_get_ovc_status;
 		handle->minipro_read_block = t56_read_block;
 		handle->minipro_write_block = t56_write_block;

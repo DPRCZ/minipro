@@ -59,21 +59,54 @@
 #define T56_REQUEST_STATUS	0x39
 #define T56_PIN_DETECTION	0x3E
 
-static int t56_send_bitstream(minipro_handle_t *handle, algorithm_t *algorithm)
+/* Device algorithm numbers used to autodetect 8/16 pin SPI devices.
+ * This will select algorithm 'SPI25F11' and 'SPI25F21'
+ * which are used for 25 SPI autodetection.
+ * This is the high byte from the 'variant' field
+ */
+#define SPI_DEVICE_8P 0x11
+#define SPI_DEVICE_16P 0x21
+#define SPI_PROTOCOL 0x03
+
+
+/* Send the required bitstream algorithm to T56 */
+static int t56_send_bitstream(minipro_handle_t *handle)
 {
+	static uint8_t bitstream_uploaded = 0;
 	uint8_t msg[64];
-	memset(msg, 0x00, sizeof(msg));
+
+	/* Don't upload the bitstream again if we are in the same session */
+	if (bitstream_uploaded)
+		return EXIT_SUCCESS;
+
+	device_t *device = handle->device;
+
+	/* Get the required FPGA bitstream algorithm */
+	if (get_algorithm(device, handle->cmdopts->algo_path, handle->icsp,
+			  handle->vopt)) {
+		return EXIT_FAILURE;
+	}
+
+	algorithm_t *algorithm = &device->algorithm;
+	fprintf(stderr, "Using %s algorithm..\n", algorithm->name);
 
 	/* Send the bitstream algorithm to the T56 */
+	memset(msg, 0x00, sizeof(msg));
 	msg[0] = T56_WRITE_BITSTREAM;
 	format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
+
 	if (msg_send(handle->usb_handle, msg, 8)) {
+		free(algorithm->bitstream);
 		return EXIT_FAILURE;
 	}
 	if (msg_send(handle->usb_handle, algorithm->bitstream,
 		     algorithm->length)) {
+		free(algorithm->bitstream);
 		return EXIT_FAILURE;
 	}
+
+	bitstream_uploaded = 1;
+	free(algorithm->bitstream);
 	return EXIT_SUCCESS;
 }
 
@@ -82,28 +115,11 @@ int t56_begin_transaction(minipro_handle_t *handle)
 	uint8_t msg[64];
 	uint8_t ovc;
 	device_t *device = handle->device;
-	static uint8_t bitstream_uploaded = 0;
 
-	memset(msg, 0x00, sizeof(msg));
-
-	/* Don't upload the bitstream again if we are in the same session */
-	if (!bitstream_uploaded) {
-		/* Get the required FPGA bitstream algorithm */
-		if (get_algorithm(device, handle->cmdopts->algo_path,
-				   handle->icsp, handle->vopt)) {
-			fprintf(stderr, "T56 initialization error.\n");
-			return EXIT_FAILURE;
-		}
-		fprintf(stderr, "Using %s algorithm..\n",
-			device->algorithm.name);
-
-		if (t56_send_bitstream(handle, &device->algorithm)) {
-			free(device->algorithm.bitstream);
-			fprintf(stderr,
-				"An error occurred while sending bitstream.\n");
-			return EXIT_FAILURE;
-		}
-		bitstream_uploaded = 1;
+	if (t56_send_bitstream(handle)){
+		free(handle->device->algorithm.bitstream);
+		fprintf(stderr, "An error occurred while sending bitstream.\n");
+		return EXIT_FAILURE;
 	}
 
 	/* T56 FPGA was initialized, we can send the normal begin_transaction command */
@@ -270,6 +286,46 @@ int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 			    handle->device->chip_id_bytes_count;
 	*device_id = (id_length ? load_int(&(msg[2]), id_length, format) :
 				  0); /* Check for positive length. */
+	return EXIT_SUCCESS;
+}
+
+int t56_spi_autodetect(minipro_handle_t *handle, uint8_t type,
+		       uint32_t *device_id)
+{
+	if (handle->device != NULL && handle->device->flags.custom_protocol) {
+		return bb_spi_autodetect(handle, type, device_id);
+	}
+
+	/* Create a device structure to search for required
+	 * spi autodetection protocol
+	 */
+	device_t device;
+	memset(&device, 0x00, sizeof(device_t));
+
+	/* We need the protocol_id and high byte of the variant field to be set */
+	device.protocol_id = SPI_PROTOCOL;
+	device.variant = type ? SPI_DEVICE_16P : SPI_DEVICE_8P;
+	device.variant <<= 8;
+	handle->device = &device;
+
+	/* Now search and send the required fpga bitstream
+	 * used for autodetection ('SPI25F11' or 'SPI25F21')
+	 */
+	if (t56_send_bitstream(handle)){
+		free(handle->device->algorithm.bitstream);
+		fprintf(stderr, "An error occurred while sending bitstream.\n");
+		return EXIT_FAILURE;
+	}
+
+	uint8_t msg[64];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_AUTODETECT;
+	msg[8] = type;
+	if (msg_send(handle->usb_handle, msg, 10))
+		return EXIT_FAILURE;
+	if (msg_recv(handle->usb_handle, msg, 16))
+		return EXIT_FAILURE;
+	*device_id = load_int(&(msg[2]), 3, MP_BIG_ENDIAN);
 	return EXIT_SUCCESS;
 }
 

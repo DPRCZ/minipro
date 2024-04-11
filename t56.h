@@ -33,7 +33,8 @@ int t56_read_block(minipro_handle_t *handle, uint8_t type,
 int t56_write_block(minipro_handle_t *handle, uint8_t type,
 			    uint32_t addr, uint8_t *buffer, size_t len);
 int t56_erase(minipro_handle_t *handle);
-
+int t56_spi_autodetect(minipro_handle_t *handle, uint8_t type,
+			       uint32_t *device_id);
 int t56_protect_off(minipro_handle_t *handle);
 int t56_protect_on(minipro_handle_t *handle);
 #endif
