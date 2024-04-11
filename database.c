@@ -37,6 +37,7 @@
 #endif
 
 /* flags */
+#define MP_REVERSED_PACKAGE	 0x00000002
 #define MP_ERASE_MASK		 0x00000010
 #define MP_ID_MASK		 0x00000020
 #define MP_DATA_MEMORY_ADDRESS	 0x00001000
@@ -464,6 +465,7 @@ static int load_mem_device(db_data_t *db_data, const char *xml_device,
 		(voltages & LAST_JEDEC_BIT_IS_POWERDOWN_ENABLE) != 0;
 	device->flags.is_powerdown_disabled =
 		(voltages & POWERDOWN_MODE_DISABLE) != 0;
+	device->flags.reversed_package = (flags & MP_REVERSED_PACKAGE) ? 1 : 0;
 
 	/* Check for custom defined protocol */
 	device->protocol_id = (uint8_t)protocol_id;
