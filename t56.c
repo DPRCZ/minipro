@@ -258,6 +258,84 @@ int t56_write_block(minipro_handle_t *handle, uint8_t type,
 	return EXIT_SUCCESS;
 }
 
+int t56_read_fuses(minipro_handle_t *handle, uint8_t type,
+			   size_t length, uint8_t items_count, uint8_t *buffer)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_read_fuses(handle, type, length, items_count, buffer);
+	}
+	uint8_t msg[64];
+
+	if (type == MP_FUSE_USER) {
+		type = T56_READ_USER;
+	} else if (type == MP_FUSE_CFG) {
+		type = T56_READ_CFG;
+	} else if (type == MP_FUSE_LOCK) {
+		type = T56_READ_LOCK;
+	} else {
+		fprintf(stderr, "Unknown type for read_fuses (%d)\n", type);
+		return EXIT_FAILURE;
+	}
+
+	memset(msg, 0, sizeof(msg));
+	msg[0] = type;
+	msg[1] = handle->device->protocol_id;
+	msg[2] = items_count;
+	format_int(&msg[4], handle->device->code_memory_size, 4,
+		   MP_LITTLE_ENDIAN);
+	if (msg_send(handle->usb_handle, msg, 8))
+		return EXIT_FAILURE;
+	if (msg_recv(handle->usb_handle, msg, sizeof(msg)))
+		return EXIT_FAILURE;
+	memcpy(buffer, &(msg[8]), length);
+	return EXIT_SUCCESS;
+}
+
+int t56_write_fuses(minipro_handle_t *handle, uint8_t type,
+			    size_t length, uint8_t items_count, uint8_t *buffer)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_write_fuses(handle, type, length, items_count,
+				      buffer);
+	}
+	uint8_t msg[64];
+
+	if (type == MP_FUSE_USER) {
+		type = T56_WRITE_USER;
+	} else if (type == MP_FUSE_CFG) {
+		type = T56_WRITE_CFG;
+	} else if (type == MP_FUSE_LOCK) {
+		type = T56_WRITE_LOCK;
+	} else {
+		fprintf(stderr, "Unknown type for write_fuses (%d)\n", type);
+	}
+
+	memset(msg, 0, sizeof(msg));
+	msg[0] = type;
+	if (buffer) {
+		msg[1] = handle->device->protocol_id;
+		msg[2] = items_count;
+		format_int(&msg[4], handle->device->code_memory_size - 0x38, 4,
+			   MP_LITTLE_ENDIAN); /* 0x38, firmware bug? */
+		memcpy(&(msg[8]), buffer, length);
+	}
+	return msg_send(handle->usb_handle, msg, sizeof(msg));
+}
+
+int t56_read_calibration(minipro_handle_t *handle, uint8_t *buffer,
+				 size_t len)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_read_calibration(handle, buffer, len);
+	}
+	uint8_t msg[64];
+	memset(msg, 0x00, sizeof(msg));
+	msg[0] = T56_READ_CALIBRATION;
+	format_int(&(msg[2]), len, 2, MP_LITTLE_ENDIAN);
+	if (msg_send(handle->usb_handle, msg, sizeof(msg)))
+		return EXIT_FAILURE;
+	return msg_recv(handle->usb_handle, buffer, len);
+}
 
 int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 		uint32_t *device_id)
