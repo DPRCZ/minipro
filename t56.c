@@ -204,7 +204,10 @@ int t56_read_block(minipro_handle_t *handle, uint8_t type,
 	if (msg_send(handle->usb_handle, msg, 8))
 		return EXIT_FAILURE;
 
-	return msg_recv(handle->usb_handle, buf, len);
+	/* T56 off by one firmware bug bug
+	 * Pass a larger buffer, otherwise the libusb will overflow.
+	 */
+	return msg_recv(handle->usb_handle, buf, len + 16);
 }
 
 int t56_write_block(minipro_handle_t *handle, uint8_t type,
@@ -232,6 +235,7 @@ int t56_write_block(minipro_handle_t *handle, uint8_t type,
 	format_int(&(msg[4]), addr, 4, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 8))
 		return EXIT_FAILURE;
+
 	if (msg_send(handle->usb_handle, buf,
 				handle->device->write_buffer_size))
 		return EXIT_FAILURE;

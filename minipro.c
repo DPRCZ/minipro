@@ -250,7 +250,7 @@ minipro_handle_t *minipro_open(uint8_t verbose)
 		handle->minipro_get_chip_id = t56_get_chip_id;
 		handle->minipro_get_ovc_status = t56_get_ovc_status;
 		handle->minipro_read_block = t56_read_block;
-		handle->minipro_write_block = t56_read_block;
+		handle->minipro_write_block = t56_write_block;
 		handle->minipro_erase = t56_erase;
 		break;
 	}

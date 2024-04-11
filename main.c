@@ -1746,7 +1746,11 @@ int read_page_file(minipro_handle_t *handle, uint8_t type, size_t size)
 	if (!file)
 		return EXIT_FAILURE;
 
-	uint8_t *buffer = malloc(size);
+	/* There is an off by one bug in T56 firmware.
+	 * Allocate couple extra bytes to prevent buffer overflow.
+	 * We need only one byte but make it 16, we never know.
+	 */
+	uint8_t *buffer = malloc(size + 16);
 	if (!buffer) {
 		fprintf(stderr, "Out of memory\n");
 		fclose(file);
