@@ -1669,13 +1669,13 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	}
 
 	/* Get the gzip uncompressed size and add the offset length */
-	uint32_t usize = offset + load_int((uint8_t *)(gzip + out_size - 4), 4,
+	uint32_t usize = load_int((uint8_t *)(gzip + out_size - 4), 4,
 					   MP_LITTLE_ENDIAN);
 
 	/* Round up to the nearest 512 byte multiple  */
-	algorithm->length = usize + 0x200 - (usize % 0x200);
+	algorithm->length = usize + (0x200 - (usize % 0x200));
 
-	algorithm->bitstream = calloc(1, algorithm->length);
+	algorithm->bitstream = calloc(1, algorithm->length + offset);
 	if (!algorithm->bitstream) {
 		fprintf(stderr, "Out of memory!\n");
 		return EXIT_FAILURE;
@@ -1700,18 +1700,18 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	}
 
 	/* Check if gzip inflate was ok */
-	if (stream.total_out != usize - offset) {
+	if (stream.total_out != usize) {
 		free(algorithm->bitstream);
 		return EXIT_FAILURE;
 	}
 
 	/* Check for algorithm integrity */
 	uint32_t file_crc =
-		load_int(algorithm->bitstream + ALGO_CRC_OFFSET + offset, 4,
+		load_int(algorithm->bitstream + offset + ALGO_CRC_OFFSET, 4,
 			 MP_LITTLE_ENDIAN);
 	uint32_t data_crc =
-		crc_32(algorithm->bitstream + ALGO_DATA_OFFSET + offset,
-		       usize - ALGO_DATA_OFFSET - offset, 0xFFFFFFFF);
+		crc_32(algorithm->bitstream + offset + ALGO_DATA_OFFSET,
+		       usize - ALGO_DATA_OFFSET, 0xFFFFFFFF);
 
 	if (file_crc != data_crc) {
 		fprintf(stderr, "Corrupted %s algorithm. Bad CRC.\n",

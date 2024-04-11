@@ -104,7 +104,7 @@ static int t56_send_bitstream(minipro_handle_t *handle)
 
 			if (msg_send(handle->usb_handle,
 				     device->algorithm.bitstream,
-				     device->algorithm.length)) {
+				     device->algorithm.length + 8)) {
 				free(device->algorithm.bitstream);
 				return EXIT_FAILURE;
 			}
@@ -580,7 +580,7 @@ static uint8_t *do_ic_test(minipro_handle_t *handle, int pull)
 			free(result);
 			return NULL;
 		}
-		if (msg_recv(handle->usb_handle, msg, 65)) {
+		if (msg_recv(handle->usb_handle, msg, sizeof(msg))) {
 			free(result);
 			return NULL;
 		}
