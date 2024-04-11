@@ -273,6 +273,29 @@ int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 	return EXIT_SUCCESS;
 }
 
+int t56_protect_off(minipro_handle_t *handle)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_protect_off(handle);
+	}
+	uint8_t msg[8];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_PROTECT_OFF;
+	return msg_send(handle->usb_handle, msg, sizeof(msg));
+}
+
+int t56_protect_on(minipro_handle_t *handle)
+{
+	if (handle->device->flags.custom_protocol) {
+		return bb_protect_on(handle);
+	}
+	uint8_t msg[8];
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_PROTECT_ON;
+	return msg_send(handle->usb_handle, msg, sizeof(msg));
+}
+
+
 int t56_erase(minipro_handle_t *handle)
 {
 	if (handle->device->flags.custom_protocol) {
