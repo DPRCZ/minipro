@@ -57,6 +57,7 @@
 #define T56_AUTODETECT		 0x37
 #define T56_UNLOCK_TSOP48	 0x38
 #define T56_REQUEST_STATUS	0x39
+#define T56_PIN_DETECTION	0x3E
 
 static int t56_send_bitstream(minipro_handle_t *handle, algorithm_t *algorithm)
 {
