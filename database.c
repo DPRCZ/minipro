@@ -1611,7 +1611,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	uint8_t algo_number = (uint8_t)(device->variant >> 8);
 
 	if (device->protocol_id > ALGO_COUNT ||
-	    !*t56_algo_table[device->protocol_id]) {
+	    !*t56_algo_table[device->protocol_id + 1]) {
 		fprintf(stderr, "Invalid algorithm number found.\n");
 		return EXIT_FAILURE;
 	}
@@ -1619,17 +1619,17 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	/* If not a logic chip add +1 offset to the lookup table */
 	if (device->chip_type != MP_LOGIC) {
 		snprintf(algorithm->name, NAME_LEN, "%s%02X",
-			 t56_algo_table[device->protocol_id + 1],
-			 algo_number);
-	} else {
-		strncpy(algorithm->name,
-			t56_algo_table[device->protocol_id + algo_number], NAME_LEN);
-	}
+			 t56_algo_table[device->protocol_id + 1], algo_number);
 
-	/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
-	if (icsp && (device->chip_info == ATMEL_AVR ||
-		     device->chip_info == ATMEL_AT90)) {
-		strcat(algorithm->name, "11S");
+		/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
+		if (icsp && (device->chip_info == ATMEL_AVR ||
+			     device->chip_info == ATMEL_AT90)) {
+			strcat(algorithm->name, "11S");
+		}
+
+		/* For Logic chips  choose only the algorithm name */
+	} else {
+		strncpy(algorithm->name, t56_algo_table[algo_number], NAME_LEN);
 	}
 
 	/* Set the database for algorithm search */
@@ -1671,8 +1671,8 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	}
 
 	/* Get the gzip uncompressed size and add the offset length */
-	uint32_t usize = load_int((uint8_t *)(gzip + out_size - 4), 4,
-					   MP_LITTLE_ENDIAN);
+	uint32_t usize =
+		load_int((uint8_t *)(gzip + out_size - 4), 4, MP_LITTLE_ENDIAN);
 
 	/* Round up to the nearest 512 byte multiple  */
 	algorithm->length = usize + (0x200 - (usize % 0x200));
@@ -1683,7 +1683,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 		return EXIT_FAILURE;
 	}
 
-	/*Uncompress data using zlib*/
+	/* Uncompress data using zlib */
 	z_stream stream = { .next_in = (Bytef *)gzip,
 			    .avail_in = (uInt)out_size,
 			    .next_out = (Bytef *)algorithm->bitstream + offset,
