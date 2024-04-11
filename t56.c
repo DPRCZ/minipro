@@ -62,6 +62,8 @@
 static int t56_send_bitstream(minipro_handle_t *handle, algorithm_t *algorithm)
 {
 	uint8_t msg[64];
+	memset(msg, 0x00, sizeof(msg));
+
 	/* Send the bitstream algorithm to the T56 */
 	msg[0] = T56_WRITE_BITSTREAM;
 	format_int(&msg[4], algorithm->length, 4, MP_LITTLE_ENDIAN);
