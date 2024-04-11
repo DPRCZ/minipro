@@ -315,6 +315,7 @@ static struct voltage_s *get_vpp_voltages(minipro_handle_t *handle)
 		return tl866ii_vpp_voltages;
 		break;
 	case MP_T48:
+	case MP_T56:
 		return t48_vpp_voltages;
 		break;
 	}
@@ -332,6 +333,7 @@ static struct voltage_s *get_vcc_voltages(minipro_handle_t *handle)
 		return tl866ii_vcc_voltages;
 		break;
 	case MP_T48:
+	case MP_T56:
 		return t48_vcc_voltages;
 		break;
 	}
