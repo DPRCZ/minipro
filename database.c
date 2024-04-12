@@ -182,19 +182,92 @@ typedef struct state_machine_a {
  * The final name is computed at runtime.
  */
 static const char t56_algo_table[][32] = {
-	"TTL1",	   "TTL2",    "IIC24C",	  "MW93ALG", "SPI25F", "AT45D",
-	"F29EE",   "W29F32P", "ROM28P",	  "ROM32P",  "ROM40P", "R28TO32P",
-	"ROM24P",  "ROM44",   "EE28C32P", "RAM32",   "SPI25F", "28F32P",
-	"FWH",	   "T48",     "T40A",	  "T40B",    "T88V",   "PIC32X",
-	"P18F87J", "P16F",    "P18F2",	  "P16F5X",  "P16CX",  "",
-	"ATMGA_",  "ATTINY_", "AT89P20_", "",	     "AT89C_", "P87C_",
-	"SST89_",  "W78E_",   "",	  	  "",	     "ROM24P", "ROM28P",
-	"RAM32",   "GAL16",   "GAL20",	  "GAL22",   "NAND_",  "PIC32X",
-	"RAM36",   "KB90",    "EMMC_",	  "VGA_",    "CPLD_",  "GEN_",
-	"ITE_"
+	"TTL1",	   "TTL2",
+
+/*	 0x01		 0x02	   	0x03	  0x04 		  0x05       0x06		*/
+	"IIC24C",	"MW93ALG", "SPI25F", "AT45D",	 "F29EE",   "W29F32P",
+
+/*	 0x07		 0x08	   	0x09	  0x0A 		  0x0B       0x0C		*/
+	"ROM28P",	"ROM32P",  "ROM40P", "R28TO32P", "ROM24P",  "ROM44",
+
+/*	 0x0D		 0x0E	   	0x0F	  0x10 		  0x11       0x12		*/
+	"EE28C32P", "RAM32",   "SPI25F", "28F32P",	 "FWH",	    "T48",
+
+/*	 0x13		 0x14	   	0x15	  0x16 		  0x17       0x18		*/
+	"T40A",		"T40B",    "T88V",   "PIC32X",	 "P18F87J", "P16F",
+
+/*	 0x19		 0x1A	   	0x1B	  0x1C 		  0x1D       0x1E		*/
+	"P18F2",	"P16F5X",  "P16CX",  "", 		 "ATMGA_",  "ATTINY_",
+
+/*	 0x1F		 0x20	   	0x21	  0x22 		  0x23       0x24		*/
+	"AT89P20_", "",	       "AT89C_", "P87C_",	 "SST89_",  "W78E_",
+
+/*	 0x25		 0x26	   	0x27	  0x28 		  0x29       0x2A		*/
+	"",	  	  	"",	       "ROM24P", "ROM28P",	 "RAM32",   "GAL16",
+
+/*	 0x2B		 0x2C	   	0x2D	  0x2E 		  0x2F       0x30		*/
+	"GAL20",	"GAL22",   "NAND_",  "PIC32X", 	 "RAM36",   "KB90",
+
+/*	 0x31		 0x32	   	0x33	  0x34 		  0x35 					*/
+	"EMMC_",	"VGA_",    "CPLD_",  "GEN_", 	 "ITE_"
 };
 
 #define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+
+/* InfoIc2 algorithms defines */
+#define IC2_ALG_IIC24C		0X01
+#define IC2_ALG_MW93ALG		0X02
+#define IC2_ALG_SPI25F_1	0X03
+#define IC2_ALG_AT45D		0X04
+#define IC2_ALG_F29EE		0X05
+#define IC2_ALG_W29F32P		0X06
+#define IC2_ALG_ROM28P_1	0X07
+#define IC2_ALG_ROM32P		0X08
+#define IC2_ALG_ROM40P		0X09
+#define IC2_ALG_R28TO32P	0X0A
+#define IC2_ALG_ROM24P_1	0X0B
+#define IC2_ALG_ROM44		0X0C
+#define IC2_ALG_EE28C32P	0X0D
+#define IC2_ALG_RAM32_1		0X0E
+#define IC2_ALG_SPI25F 		0X0F
+#define IC2_ALG_28F32P		0X10
+#define IC2_ALG_FWH			0X11
+#define IC2_ALG_T48			0X12
+#define IC2_ALG_T40A		0X13
+#define IC2_ALG_T40B		0X14
+#define IC2_ALG_T88V		0X15
+#define IC2_ALG_PIC32X_1	0X16
+#define IC2_ALG_P18F87J		0X17
+#define IC2_ALG_P16F		0X18
+#define IC2_ALG_P18F2		0X19
+#define IC2_ALG_P16F5X		0X1A
+#define IC2_ALG_P16CX		0X1B
+#define IC2_ALG_PIC16C		0X1C
+#define IC2_ALG_ATMGA		0X1D
+#define IC2_ALG_ATTINY		0X1E
+#define IC2_ALG_AT89P20		0X1F
+#define IC2_ALG_SM89		0X20
+#define IC2_ALG_AT89C		0X21
+#define IC2_ALG_P87C		0X22
+#define IC2_ALG_SST89		0X23
+#define IC2_ALG_W78E		0X24
+#define IC2_ALG_SM59		0X25
+#define IC2_ALG_SM39		0X26
+#define IC2_ALG_ROM24P_2	0X27
+#define IC2_ALG_ROM28P_2	0X28
+#define IC2_ALG_RAM32_2		0X29
+#define IC2_ALG_GAL16		0X2A
+#define IC2_ALG_GAL20		0X2B
+#define IC2_ALG_GAL22		0X2C
+#define IC2_ALG_NAND		0X2D
+#define IC2_ALG_PIC32X_2	0X2E
+#define IC2_ALG_RAM36		0X2F
+#define IC2_ALG_KB90		0X30
+#define IC2_ALG_EMMC		0X31
+#define IC2_ALG_VGA			0X32
+#define IC2_ALG_CPLD		0X33
+#define IC2_ALG_GEN			0X34
+#define IC2_ALG_ITE			0X35
 
 
 static int parse_profiles(state_machine_p_t *);
