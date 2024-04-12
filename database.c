@@ -1637,50 +1637,57 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 {
 	algorithm_t *algorithm = &device->algorithm;
 	uint8_t algo_number = (uint8_t)(device->variant >> 8);
+	uint8_t error = 0;
+	const char *entry;
 
-	if (device->protocol_id > ALGO_COUNT ||
-	    !*t56_algo_table[device->protocol_id + 1]) {
+	/* Check if the arguments are in valid range */
+	if (device->protocol_id != MP_LOGIC) {
+		int isProtocolValid = device->protocol_id > ALGO_COUNT;
+		entry = t56_algo_table[device->protocol_id - 1];
+		if (isProtocolValid || (entry == NULL))
+			error = 1;
+	} else {
+		if (algo_number > UTIL_COUNT)
+			error = 1;
+	}
+
+	if (error) {
 		fprintf(stderr, "Invalid algorithm number found.\n");
 		return EXIT_FAILURE;
 	}
 
-	/* If not a logic chip add +1 offset to the lookup table */
+	/* If not a logic chip grab the prefix name using the protocol_id-1 */
 	if (device->protocol_id != MP_LOGIC) {
-		char *name = stpcpy(algorithm->name, t56_algo_table[device->protocol_id + 1]);
+
+		char algo_str[8];
+		snprintf(algo_str, sizeof(algo_str), "%02X", algo_number);
+		char *name = stpcpy(algorithm->name, entry);
+
 		switch (device->protocol_id) {
 		/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
 		case IC2_ALG_ATMGA:
-			if (icsp)
-				strcat(algorithm->name, "11S");
-			else
-				snprintf(name, NAME_LEN, "%02X", algo_number);
+				strcat(name, icsp ? "11S" : algo_str);
 			break;
 
 		/* Choose ICSP option for AT89C*/
 		case IC2_ALG_AT89C:
-			if (icsp)
-				strcat(name, "2S");
-			else
-				snprintf(name, NAME_LEN, "%02X", algo_number);
+			strcat(name, icsp ? "2S" : algo_str);
 			break;
 
 		/* Choose 1.8V/3.3V for EMMC */
 		case IC2_ALG_EMMC:
-			if (vopt == V_1V8)
-				strcat(name, "_18");
-			else
-				strcat(name, "_33");
+				strcat(name, V_1V8 ? "_18" : "_33");
 			break;
 
 			/* Default case. Handle reversed package devices */
 		default:
-			snprintf(name, NAME_LEN, "%02X", algo_number);
+			strcat(name, algo_str);
 			if (device->flags.reversed_package)
 				strcat(algorithm->name, "R");
 		}
-		/* For Logic chips choose only the algorithm name */
+		/* For Logic chips/utils copy only the algorithm name */
 	} else {
-		strncpy(algorithm->name, t56_algo_table[algo_number], NAME_LEN);
+		strncpy(algorithm->name, t56_util_table[algo_number], NAME_LEN);
 	}
 
 	/* Set the database for algorithm search */
