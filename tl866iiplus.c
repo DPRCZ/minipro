@@ -232,7 +232,7 @@ int tl866iiplus_begin_transaction(minipro_handle_t *handle)
 		msg[0] = TL866IIPLUS_BEGIN_TRANS;
 		msg[1] = device->protocol_id;
 		msg[2] = (uint8_t)handle->device->variant;
-		msg[3] = handle->icsp;
+		msg[3] = handle->cmdopts->icsp;
 
 		format_int(&(msg[4]), device->voltages.raw_voltages, 2,
 			   MP_LITTLE_ENDIAN);

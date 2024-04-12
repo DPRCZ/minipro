@@ -255,7 +255,7 @@ int tl866a_begin_transaction(minipro_handle_t *handle)
 			   MP_LITTLE_ENDIAN);
 
 		/* 8 bit icsp options */
-		msg[11] = handle->icsp;
+		msg[11] = handle->cmdopts->icsp;
 
 		/* 24 bit code size (12+13+14) */
 		format_int(&(msg[12]), handle->device->code_memory_size, 3,

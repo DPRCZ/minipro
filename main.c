@@ -3085,6 +3085,10 @@ int main(int argc, char **argv)
 	/* Activate ICSP if the chip can only be programmed via ICSP. */
 	handle->icsp = 0;
 	if (handle->device->flags.prog_support == MP_ICSP_ONLY) {
+		handle->cmdopts->icsp = MP_ICSP_ENABLE | MP_ICSP_VCC;
+	} else if (handle->device->flags.prog_support == MP_ZIF_ONLY)
+		handle->cmdopts->icsp = 0x00;
+	if (handle->cmdopts->icsp)
 		handle->icsp = MP_ICSP_ENABLE | MP_ICSP_VCC;
 	} else if (handle->device->flags.prog_support == MP_ZIF_ICSP)
 		handle->icsp = cmdopts.icsp;

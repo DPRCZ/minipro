@@ -92,7 +92,7 @@ static int t56_send_bitstream(minipro_handle_t *handle)
 			/* Choose 'TTL1' or 'TTL2' bitstream */
 			handle->device->variant = i << 8;
 			if (get_algorithm(device, handle->cmdopts->algo_path,
-					  handle->icsp, handle->vopt, 8))
+					  handle->cmdopts->icsp, handle->cmdopts->vopt, 8))
 				return EXIT_FAILURE;
 
 			/* Use multipart bitstream sending protocol */
@@ -115,7 +115,7 @@ static int t56_send_bitstream(minipro_handle_t *handle)
 
 	/* Normal devices algorithm handling */
 	if (get_algorithm(device, handle->cmdopts->algo_path,
-			  handle->icsp, handle->vopt, 0))
+			  handle->cmdopts->icsp, handle->cmdopts->vopt, 0))
 		return EXIT_FAILURE;
 
 	fprintf(stderr, "Using %s algorithm..\n",
@@ -160,7 +160,7 @@ int t56_begin_transaction(minipro_handle_t *handle)
 		msg[0] = T56_BEGIN_TRANS;
 		msg[1] = device->protocol_id;
 		msg[2] = (uint8_t)handle->device->variant;
-		msg[3] = handle->icsp;
+		msg[3] = handle->cmdopts->icsp;
 
 		format_int(&(msg[4]), device->voltages.raw_voltages, 2,
 			   MP_LITTLE_ENDIAN);
