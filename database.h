@@ -22,6 +22,80 @@
 #include <stdint.h>
 #include "minipro.h"
 
+/* InfoIc2 algorithms defines */
+#define IC2_ALG_IIC24C		0X01
+#define IC2_ALG_MW93ALG		0X02
+#define IC2_ALG_SPI25F_1	0X03
+#define IC2_ALG_AT45D		0X04
+#define IC2_ALG_F29EE		0X05
+#define IC2_ALG_W29F32P		0X06
+#define IC2_ALG_ROM28P_1	0X07
+#define IC2_ALG_ROM32P		0X08
+#define IC2_ALG_ROM40P		0X09
+#define IC2_ALG_R28TO32P	0X0A
+#define IC2_ALG_ROM24P_1	0X0B
+#define IC2_ALG_ROM44		0X0C
+#define IC2_ALG_EE28C32P	0X0D
+#define IC2_ALG_RAM32_1		0X0E
+#define IC2_ALG_SPI25F 		0X0F
+#define IC2_ALG_28F32P		0X10
+#define IC2_ALG_FWH			0X11
+#define IC2_ALG_T48			0X12
+#define IC2_ALG_T40A		0X13
+#define IC2_ALG_T40B		0X14
+#define IC2_ALG_T88V		0X15
+#define IC2_ALG_PIC32X_1	0X16
+#define IC2_ALG_P18F87J		0X17
+#define IC2_ALG_P16F		0X18
+#define IC2_ALG_P18F2		0X19
+#define IC2_ALG_P16F5X		0X1A
+#define IC2_ALG_P16CX		0X1B
+#define IC2_ALG_PIC16C		0X1C
+#define IC2_ALG_ATMGA		0X1D
+#define IC2_ALG_ATTINY		0X1E
+#define IC2_ALG_AT89P20		0X1F
+#define IC2_ALG_SM89		0X20
+#define IC2_ALG_AT89C		0X21
+#define IC2_ALG_P87C		0X22
+#define IC2_ALG_SST89		0X23
+#define IC2_ALG_W78E		0X24
+#define IC2_ALG_SM59		0X25
+#define IC2_ALG_SM39		0X26
+#define IC2_ALG_ROM24P_2	0X27
+#define IC2_ALG_ROM28P_2	0X28
+#define IC2_ALG_RAM32_2		0X29
+#define IC2_ALG_GAL16		0X2A
+#define IC2_ALG_GAL20		0X2B
+#define IC2_ALG_GAL22		0X2C
+#define IC2_ALG_NAND		0X2D
+#define IC2_ALG_PIC32X_2	0X2E
+#define IC2_ALG_RAM36		0X2F
+#define IC2_ALG_KB90		0X30
+#define IC2_ALG_EMMC		0X31
+#define IC2_ALG_VGA			0X32
+#define IC2_ALG_CPLD		0X33
+#define IC2_ALG_GEN			0X34
+#define IC2_ALG_ITE			0X35
+
+/* T56 Utility algorithms defines */
+#define UTIL_ALG_TTL1			0x00
+#define UTIL_ALG_TTL2			0x01
+#define UTIL_ALG_PINDECT100M	0x02
+#define UTIL_ALG_STGND			0x03
+#define UTIL_ALG_STPVGI			0x04
+#define UTIL_ALG_UART_VGA		0x05
+#define UTIL_ALG_VGA_11			0x06
+#define UTIL_ALG_VGA_21			0x07
+#define UTIL_ALG_VGA1024x768	0x08
+#define UTIL_ALG_VGA1152x864	0x09
+#define UTIL_ALG_VGA1280x1024	0x0A
+#define UTIL_ALG_VGA1280x800	0x0B
+#define UTIL_ALG_VGA1440x900	0x0C
+#define UTIL_ALG_VGA1920x1080	0x0D
+#define UTIL_ALG_VGA640x480		0x0E
+#define UTIL_ALG_VGA800x600		0x0F
+#define UTIL_ALG_VGA_HDMI		0x10
+
 typedef struct fuse {
 	uint16_t mask;
 	uint16_t def;
