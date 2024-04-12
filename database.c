@@ -1690,17 +1690,40 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	}
 
 	/* If not a logic chip add +1 offset to the lookup table */
-	if (device->chip_type != MP_LOGIC) {
-		snprintf(algorithm->name, NAME_LEN, "%s%02X",
-			 t56_algo_table[device->protocol_id + 1], algo_number);
-
+	if (device->protocol_id != MP_LOGIC) {
+		char *name = stpcpy(algorithm->name, t56_algo_table[device->protocol_id + 1]);
+		switch (device->protocol_id) {
 		/* Choose icsp algorithm for Atmel ATmega, ATtiny and AT90 */
-		if (icsp && (device->chip_info == ATMEL_AVR ||
-			     device->chip_info == ATMEL_AT90)) {
-			strcat(algorithm->name, "11S");
-		}
+		case IC2_ALG_ATMGA:
+			if (icsp)
+				strcat(algorithm->name, "11S");
+			else
+				snprintf(name, NAME_LEN, "%02X", algo_number);
+			break;
 
-		/* For Logic chips  choose only the algorithm name */
+		/* Choose ICSP option for AT89C*/
+		case IC2_ALG_AT89C:
+			if (icsp)
+				strcat(name, "2S");
+			else
+				snprintf(name, NAME_LEN, "%02X", algo_number);
+			break;
+
+		/* Choose 1.8V/3.3V for EMMC */
+		case IC2_ALG_EMMC:
+			if (vopt == V_1V8)
+				strcat(name, "_18");
+			else
+				strcat(name, "_33");
+			break;
+
+			/* Default case. Handle reversed package devices */
+		default:
+			snprintf(name, NAME_LEN, "%02X", algo_number);
+			if (device->flags.reversed_package)
+				strcat(algorithm->name, "R");
+		}
+		/* For Logic chips choose only the algorithm name */
 	} else {
 		strncpy(algorithm->name, t56_algo_table[algo_number], NAME_LEN);
 	}
