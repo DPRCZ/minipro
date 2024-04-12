@@ -178,12 +178,10 @@ typedef struct state_machine_a {
 	db_data_t *db_data;
 } state_machine_a_t;
 
-/* T56 algorithm prefixes table.
+/* T56 algorithm prefixes table mapped to protocol_id.
  * The final name is computed at runtime.
  */
-static const char t56_algo_table[][32] = {
-	"TTL1",	   "TTL2",
-
+static const char t56_algo_table[][16] = {
 /*	 0x01		 0x02	   	0x03	  0x04 		  0x05       0x06		*/
 	"IIC24C",	"MW93ALG", "SPI25F", "AT45D",	 "F29EE",   "W29F32P",
 
@@ -212,8 +210,19 @@ static const char t56_algo_table[][32] = {
 	"EMMC_",	"VGA_",    "CPLD_",  "GEN_", 	 "ITE_"
 };
 
-#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+/*
+ * T56  utility algorithms name table used for various tasks.
+ */
+static const char t56_util_table[][16] = {
+	"TTL1",	       "TTL2",	       "Pindect100M",  "STGND",
+	"StPVGI",      "uart_vga",     "vga_11",       "vga_21",
+	"vga1024x768", "vga1152x864",  "vga1280x1024", "vga1280x800",
+	"vga1440x900", "vga1920x1080", "vga640x480",   "vga800x600",
+	"vga_hdmi"
+};
 
+#define ALGO_COUNT (sizeof((t56_algo_table))/(sizeof(t56_algo_table[0])))
+#define UTIL_COUNT (sizeof((t56_util_table))/(sizeof(t56_util_table[0])))
 
 
 static int parse_profiles(state_machine_p_t *);
