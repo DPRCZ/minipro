@@ -23,6 +23,7 @@
 #include "minipro.h"
 
 /* InfoIc2 algorithms defines */
+#define IC2_ALG_NONE		0x00
 #define IC2_ALG_IIC24C		0X01
 #define IC2_ALG_MW93ALG		0X02
 #define IC2_ALG_SPI25F_1	0X03

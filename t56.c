@@ -87,12 +87,14 @@ static int t56_send_bitstream(minipro_handle_t *handle)
 	device_t *device = handle->device;
 	if (device->chip_type == MP_LOGIC) {
 		fprintf(stderr, "Using LOGIC algorithm..\n");
-		device->protocol_id = 0x00;
+		device->protocol_id = IC2_ALG_NONE;
 		for (int i = 0; i < 2; i++) {
 			/* Choose 'TTL1' or 'TTL2' bitstream */
-			handle->device->variant = i << 8;
+			handle->device->variant = i ? UTIL_ALG_TTL2 << 8 :
+						      UTIL_ALG_TTL1 << 8;
 			if (get_algorithm(device, handle->cmdopts->algo_path,
-					  handle->cmdopts->icsp, handle->cmdopts->vopt, 8))
+					  handle->cmdopts->icsp,
+					  handle->cmdopts->vopt, 8))
 				return EXIT_FAILURE;
 
 			/* Use multipart bitstream sending protocol */
