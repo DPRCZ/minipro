@@ -1641,7 +1641,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	const char *entry;
 
 	/* Check if the arguments are in valid range */
-	if (device->protocol_id != MP_LOGIC) {
+	if (device->protocol_id != IC2_ALG_NONE) {
 		int isProtocolValid = device->protocol_id > ALGO_COUNT;
 		entry = t56_algo_table[device->protocol_id - 1];
 		if (isProtocolValid || (entry == NULL))
@@ -1657,7 +1657,7 @@ int get_algorithm(device_t *device, const char *algo_path, uint8_t icsp,
 	}
 
 	/* If not a logic chip grab the prefix name using the protocol_id-1 */
-	if (device->protocol_id != MP_LOGIC) {
+	if (device->protocol_id != IC2_ALG_NONE) {
 
 		char algo_str[8];
 		snprintf(algo_str, sizeof(algo_str), "%02X", algo_number);
