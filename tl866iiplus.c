@@ -218,16 +218,6 @@ int tl866iiplus_begin_transaction(minipro_handle_t *handle)
 
 	memset(msg, 0x00, sizeof(msg));
 	if (!handle->device->flags.custom_protocol) {
-		/*
-      // FIXME does this need to be here anymore? (DG)
-      // Send a NAND init
-      if(handle->device->chip_type == MP_NAND){
-              msg[0] = TL866IIPLUS_NAND_INIT;
-
-             if(msg_send(handle->usb_handle, msg, sizeof(msg))) return
-      EXIT_FAILURE; memset(msg, 0x00, sizeof(msg));
-      }
-    */
 
 		msg[0] = TL866IIPLUS_BEGIN_TRANS;
 		msg[1] = device->protocol_id;
@@ -973,6 +963,7 @@ int tl866iiplus_pin_test(minipro_handle_t *handle)
 	int d_pin = 0;
 	int x_pin = d_pins/2;
 	int pno = p_pins-d_pins;
+
 
 	uint8_t msg[48], pins[p_pins];
 	int i;
