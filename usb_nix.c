@@ -27,6 +27,8 @@
 #define MP_TL866II_VID	    0xa466
 #define MP_TL866II_PID	    0x0a53
 #define MP_TL866IIPLUS	    5
+#define MP_T56			    6
+#define MP_T48			    7
 #define MP_USBTIMEOUT	    5000
 #define MP_USB_READ_TIMEOUT 360000
 
@@ -91,10 +93,21 @@ int minipro_get_devices_count(uint8_t version)
 	libusb_device **devs;
 	int i, devices = 0;
 
-	uint16_t PID = version == MP_TL866IIPLUS ? MP_TL866II_PID :
-						   MP_TL866_PID;
-	uint16_t VID = version == MP_TL866IIPLUS ? MP_TL866II_VID :
-						   MP_TL866_VID;
+	uint16_t PID, VID;
+
+	switch (version) {
+	case MP_TL866IIPLUS:
+	case MP_T48:
+	case MP_T56:
+		PID = MP_TL866II_PID;
+		VID = MP_TL866II_VID;
+		break;
+
+	default:
+		PID = MP_TL866_PID;
+		VID = MP_TL866_VID;
+		break;
+	}
 
 	if (libusb_init(NULL) < 0)
 		return 0;

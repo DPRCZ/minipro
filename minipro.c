@@ -33,6 +33,7 @@
 #define TL866A_RESET	  0xFF
 #define TL866IIPLUS_RESET 0x3F
 #define T48_RESET 0x3F
+#define T56_RESET 0x3F
 
 #define CRC32_POLYNOMIAL  0xEDB88320
 
@@ -100,14 +101,16 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 		hw = msg[39];
 		break;
 	case MP_T48:
-		handle->status = MP_STATUS_NORMAL; /* TODO: */
+		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
+						 MP_STATUS_NORMAL;
 		handle->model = "T48";
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
 		hw = msg[60]; /* TODO: confirm that it's HW */
 		break;
 	case MP_T56:
-		handle->status = MP_STATUS_NORMAL; /* TODO: */
+		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
+						 MP_STATUS_NORMAL;
 		handle->model = "T56";
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
@@ -242,6 +245,7 @@ minipro_handle_t *minipro_open(uint8_t verbose)
 		handle->minipro_get_ovc_status = t48_get_ovc_status;
 		handle->minipro_read_jedec_row = t48_read_jedec_row;
 		handle->minipro_write_jedec_row = t48_write_jedec_row;
+		handle->minipro_firmware_update = t48_firmware_update;
 		handle->minipro_logic_ic_test = t48_logic_ic_test;
 		break;
 	case MP_T56:
@@ -260,6 +264,7 @@ minipro_handle_t *minipro_open(uint8_t verbose)
 		handle->minipro_get_ovc_status = t56_get_ovc_status;
 		handle->minipro_read_jedec_row = t56_read_jedec_row;
 		handle->minipro_write_jedec_row = t56_write_jedec_row;
+		handle->minipro_firmware_update = t56_firmware_update;
 		handle->minipro_logic_ic_test = t56_logic_ic_test;
 		break;
 	}
@@ -308,6 +313,10 @@ int minipro_reset(minipro_handle_t *handle)
 		break;
 	case MP_T48:
 		msg[0] = T48_RESET;
+		size = 8;
+		break;
+	case MP_T56:
+		msg[0] = T56_RESET;
 		size = 8;
 		break;
 	}

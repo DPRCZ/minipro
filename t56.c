@@ -60,6 +60,10 @@
 #define T56_REQUEST_STATUS	 0x39
 #define T56_PIN_DETECTION	 0x3E
 
+#define T56_BOOTLOADER_WRITE	 0x3B
+#define T56_BOOTLOADER_ERASE	 0x3C
+#define T56_SWITCH		 0x3D
+
 /* Device algorithm numbers used to autodetect 8/16 pin SPI devices.
  * This will select algorithm 'SPI25F11' and 'SPI25F21'
  * which are used for 25 SPI autodetection.
@@ -69,6 +73,8 @@
 #define SPI_DEVICE_16P 0x21
 #define SPI_PROTOCOL 0x03
 
+
+#define T56_BTLDR_MAGIC		 0xA578B986
 
 /* Send the required bitstream algorithm to T56 */
 static int t56_send_bitstream(minipro_handle_t *handle)
@@ -687,4 +693,242 @@ int t56_logic_ic_test(minipro_handle_t *handle)
 		return EXIT_FAILURE;
 
 	return ret;
+}
+
+
+/*****************************************************************************
+ * Firmware updater section
+ *****************************************************************************
+
+This is the updateT56.dat file structure.
+It has a fixed 16 byte header, followed by a number of 2068-byte blocks
+|============|===========|============|==============|
+|File version| File CRC  | Unknown    | Blocks count |
+|============|===========|============|==============|
+|  4 bytes   | 4 bytes   | 4 bytes    | 4 bytes      |
+|============|===========|============|==============|
+|  offset 0  | offset 4  | offset 8   | offset 12    |
+|============|===========|============|==============|
+
+*/
+
+/* Performing a firmware update */
+int t56_firmware_update(minipro_handle_t *handle, const char *firmware)
+{
+	uint8_t msg[2080];
+
+	struct stat st;
+	if (stat(firmware, &st)) {
+		fprintf(stderr, "%s open error!: ", firmware);
+		perror("");
+		return EXIT_FAILURE;
+	}
+
+	off_t file_size = st.st_size;
+	/* Check the updateT56.dat size */
+	if (file_size < 16 || file_size > 1048576) {
+		fprintf(stderr, "%s file size error!\n", firmware);
+		return EXIT_FAILURE;
+	}
+
+	/* Open the updateT56.dat firmware file */
+	FILE *file = fopen(firmware, "rb");
+	if (!file) {
+		fprintf(stderr, "%s open error!: ", firmware);
+		perror("");
+		return EXIT_FAILURE;
+	}
+	uint8_t *update_dat = malloc(file_size);
+	if (!update_dat) {
+		fprintf(stderr, "Out of memory!\n");
+		fclose(file);
+		return EXIT_FAILURE;
+	}
+
+	/* Read the updateT56.dat file */
+	if (fread(update_dat, sizeof(char), st.st_size, file) != st.st_size) {
+		fprintf(stderr, "%s file read error!\n", firmware);
+		fclose(file);
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+	fclose(file);
+
+	uint32_t version = load_int(update_dat, 4, MP_LITTLE_ENDIAN);
+	if ((version & 0xFFFF0000) != 0x56000000) {
+		fprintf(stderr, "%s file version error!\n", firmware);
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+	version &= 0x0000FFFF;
+
+	/* Read the blocks count and check if correct */
+	uint32_t blocks = load_int(update_dat + 12, 4, MP_LITTLE_ENDIAN);
+	if (blocks * 0x814 + 16 != file_size) {
+		fprintf(stderr, "%s file size error!\n", firmware);
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+
+	/* Compute the file CRC and compare */
+	uint32_t crc = crc_32(update_dat + 16, blocks * 0x814, 0xFFFFFFFF);
+	if (crc != load_int(update_dat + 4, 4, MP_LITTLE_ENDIAN)) {
+		fprintf(stderr, "%s file CRC error!\n", firmware);
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+
+	 /* TODO: HW version detection may be incorrect here: */
+	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
+		1, (version >> 8) & 0xFF, (version & 0xFF));
+
+	if (handle->firmware > version)
+		fprintf(stderr, " (older)");
+	else if (handle->firmware < version)
+		fprintf(stderr, " (newer)");
+
+	fprintf(stderr, "\n\nDo you want to continue with firmware update? y/n:");
+	fflush(stderr);
+	char c = getchar();
+	if (c != 'Y' && c != 'y') {
+		free(update_dat);
+		fprintf(stderr, "Firmware update aborted.\n");
+		return EXIT_FAILURE;
+	}
+
+	/* Switching to boot mode if necessary */
+	if (handle->status == MP_STATUS_NORMAL) {
+		fprintf(stderr, "Switching to bootloader... ");
+		fflush(stderr);
+
+		memset(msg, 0, sizeof(msg));
+		msg[0] = T56_SWITCH;
+		format_int(&msg[4], T56_BTLDR_MAGIC, 4, MP_LITTLE_ENDIAN);
+		if (msg_send(handle->usb_handle, msg, 8)) {
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		memset(msg, 0, sizeof(msg));
+		if (msg_recv(handle->usb_handle, msg, 32)) {
+			fprintf(stderr, "failed!\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		if (msg[0]) {
+			fprintf(stderr, "failed (code: %d)!\n", msg[0]);
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		if (minipro_reset(handle)) {
+			fprintf(stderr, "failed!\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		handle = minipro_open(VERBOSE);
+		if (!handle) {
+			fprintf(stderr, "failed!\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		if (handle->status == MP_STATUS_NORMAL) {
+			fprintf(stderr, "failed!\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		fprintf(stderr, "OK\n");
+	}
+
+	/* Erase device */
+	fprintf(stderr, "Erasing... ");
+	fflush(stderr);
+
+	memset(msg, 0, sizeof(msg));
+	msg[0] = T56_BOOTLOADER_ERASE;
+	if (msg_send(handle->usb_handle, msg, 8)) {
+		fprintf(stderr, "\nErase failed!\n");
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+
+	memset(msg, 0, sizeof(msg));
+	if (msg_recv(handle->usb_handle, msg, 32)) {
+		fprintf(stderr, "\nErase failed!\n");
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+
+	if (msg[1]) {
+		fprintf(stderr, "\nfailed\n");
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
+
+	fprintf(stderr, "OK\n");
+
+	/* Reflash firmware */
+	fprintf(stderr, "Reflashing... ");
+	fflush(stderr);
+
+	for (uint32_t i = 0; i < blocks; i++) {
+		memset(msg, 0, sizeof(msg));
+		msg[0] = T56_BOOTLOADER_WRITE;
+		msg[1] = 0;
+		msg[2] = 0x14;	/* Data Length LSB */
+		msg[3] = 0x08; 	/* Data length MSB */
+		memcpy(&msg[8], update_dat + 16 + i * 0x814, 0x814); /* Block */
+
+		/* Write firmware block */
+		if (msg_send(handle->usb_handle, msg, 0x81c)) {
+			fprintf(stderr, "\nReflash failed\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		/* Check if the firmware block was successfully written */
+		memset(msg, 0, sizeof(msg));
+		if (msg_recv(handle->usb_handle, msg, 32)) {
+			fprintf(stderr, "\nReflash... Failed\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		if (msg[1]) {
+			fprintf(stderr, "\nReflash... Failed\n");
+			free(update_dat);
+			return EXIT_FAILURE;
+		}
+
+		fprintf(stderr, "\r\e[KReflashing... %2d%%", i * 100 / blocks);
+		fflush(stderr);
+	}
+
+	fprintf(stderr, "\r\e[KReflashing... 100%%\n");
+
+	/* Switching back to normal mode */
+	fprintf(stderr, "Resetting device... ");
+	fflush(stderr);
+	if (minipro_reset(handle)) {
+		fprintf(stderr, "failed!\n");
+		return EXIT_FAILURE;
+	}
+
+	handle = minipro_open(VERBOSE);
+	if (!handle) {
+		fprintf(stderr, "failed!\n");
+		return EXIT_FAILURE;
+	}
+	fprintf(stderr, "OK\n");
+	if (handle->status != MP_STATUS_NORMAL) {
+		fprintf(stderr, "Reflash... failed\n");
+		return EXIT_FAILURE;
+	}
+
+	fprintf(stderr, "Reflash... OK\n");
+	return EXIT_SUCCESS;
 }

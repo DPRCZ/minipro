@@ -46,5 +46,5 @@ int t48_write_jedec_row(minipro_handle_t *handle, uint8_t *buffer, uint8_t row,
 int t48_read_jedec_row(minipro_handle_t *handle, uint8_t *buffer,
 			       uint8_t row, uint8_t flags, size_t size);
 int t48_logic_ic_test(minipro_handle_t *handle);
-
+int t48_firmware_update(minipro_handle_t *handle, const char *firmware);
 #endif

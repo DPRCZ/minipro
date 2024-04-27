@@ -29,6 +29,8 @@
 #define USB_ENDPOINT_OUT   0x00
 #define USB_ENDPOINT_IN	   0x80
 #define MP_TL866IIPLUS	   5
+#define MP_T56					   6
+#define MP_T48					   7
 #define MP_TL866A	   2
 
 #define TL866A_GUID                                                    \
@@ -380,8 +382,19 @@ static int search_devices(uint8_t version, char **device_path)
 	uint32_t idx = 0;
 	uint32_t devices = 0;
 
-	GUID guid = (version == MP_TL866IIPLUS) ? (GUID)TL866IIPLUS_GUID :
-						  (GUID)TL866A_GUID;
+	GUID guid;
+
+	switch (version) {
+	case MP_TL866IIPLUS:
+	case MP_T48:
+	case MP_T56:
+		guid = (GUID)TL866IIPLUS_GUID;
+		break;
+		
+	default:
+		guid = (GUID)TL866A_GUID;
+		break;
+	}
 
 	HDEVINFO handle = SetupDiGetClassDevs(
 		&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
