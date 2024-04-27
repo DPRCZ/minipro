@@ -73,7 +73,8 @@ uint32_t crc_32(uint8_t *data, size_t size, uint32_t initial)
 
 static int minipro_get_system_info(minipro_handle_t *handle)
 {
-	uint8_t msg[80], hw;
+	uint8_t msg[80];
+	uint32_t voltage;
 	memset(msg, 0x0, sizeof(msg));
 
 	if (msg_send(handle->usb_handle, msg, 5))
@@ -90,7 +91,9 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 		handle->model = msg[6] == MP_TL866A ? "TL866A" : "TL866CS";
 		memcpy(handle->device_code, msg + 7, 8);
 		memcpy(handle->serial_number, msg + 15, 24);
-		hw = msg[39];
+		handle->hw = msg[39];
+		handle->voltage = 0.0f;
+		handle->speed = 0;
 		break;
 
 	/* TL866II+:
@@ -116,7 +119,9 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 		handle->model = "TL866II+";
 		memcpy(handle->device_code, msg + 8, 8);
 		memcpy(handle->serial_number, msg + 16, 20);
-		hw = msg[40];
+		handle->hw = msg[40];
+		handle->voltage = 0.0f;
+		handle->speed = 0;
 		break;
 
 	/* T56, T48:
@@ -143,18 +148,26 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
 						 MP_STATUS_NORMAL;
 		handle->model = "T48";
+		memcpy(handle->mfg_date, msg + 8, 16);
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
-		hw = 0;
+		handle->hw = 0;
+		voltage = load_int(&msg[56], 4, MP_LITTLE_ENDIAN);
+		handle->voltage = (voltage * 0xccf6 / 0x27000) / 100.0f;
+		handle->speed = msg[60];
 		break;
 
 	case MP_T56:
 		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
 						 MP_STATUS_NORMAL;
 		handle->model = "T56";
+		memcpy(handle->mfg_date, msg + 8, 16);
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
-		hw = 0;
+		handle->hw = 0;
+		voltage = load_int(&msg[56], 4, MP_LITTLE_ENDIAN);
+		handle->voltage = (voltage * 0xccf6 / 0x27000) / 100.0f;
+		handle->speed = msg[60];
 		break;
 
 	/* TODO: T56P:
@@ -185,7 +198,7 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 
 	handle->firmware = load_int(&msg[4], 2, MP_LITTLE_ENDIAN);
 	snprintf(handle->firmware_str, sizeof(handle->firmware_str),
-		 "%02d.%d.%02d", hw, msg[5], msg[4]);
+		 "%02d.%d.%02d", handle->hw, msg[5], msg[4]);
 	return EXIT_SUCCESS;
 }
 
@@ -463,6 +476,24 @@ void minipro_print_system_info(minipro_handle_t *handle)
 	}
 	fprintf(stderr, "Device code: %s\nSerial code: %s\n", handle->device_code,
 		handle->serial_number);
+
+	if (*handle->mfg_date)
+		fprintf(stderr, "Manufactured: %s\n", handle->mfg_date);
+
+	switch (handle->speed) {
+	case 0:
+		fprintf(stderr, "USB speed: 12Mbps (USB 1.1)\n");
+		break;
+	case 3:
+		fprintf(stderr, "USB speed: 5Gbps (USB 3.0)\n");
+		break;
+	default:
+		fprintf(stderr, "USB speed: 480Mbps (USB 2.0)\n");
+		break;
+	}
+
+	if (handle->voltage > 0.0f)
+		fprintf(stderr, "Supply voltage: %.2f V\n", handle->voltage);
 }
 
 int minipro_begin_transaction(minipro_handle_t *handle)

@@ -269,9 +269,13 @@ typedef struct minipro_handle {
 	char firmware_str[16];
 	char device_code[9];
 	char serial_number[25];
+	char mfg_date[17];
 	uint32_t firmware;
+	uint8_t hw;
 	uint8_t status;
 	uint8_t version;
+	uint8_t speed;
+	float voltage;
 	device_t *device;
 	void *usb_handle;
 	cmdopts_t *cmdopts;
