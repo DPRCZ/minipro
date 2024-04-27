@@ -835,7 +835,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 	msg[5] = 0xFF;
 	msg[6] = 3;
 	msg[7] = 8;
-	format_int(&msg[260], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
+	format_int(&msg[260], 0xCDEF8668, 4, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 264)) {
 		fprintf(stderr, "\nReflash failed\n");
 		free(update_dat);
