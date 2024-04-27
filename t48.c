@@ -684,7 +684,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 
 	 /* TODO: HW version detection may be incorrect here: */
 	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
-		1, (version >> 8) & 0xFF, (version & 0xFF));
+		0, (version >> 8) & 0xFF, (version & 0xFF));
 
 	if (handle->firmware > version)
 		fprintf(stderr, " (older)");

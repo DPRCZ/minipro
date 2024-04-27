@@ -83,6 +83,33 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 
 	handle->version = msg[6];
 	switch (msg[6]) {
+	/* Old devices */
+	case MP_TL866A:
+	case MP_TL866CS:
+		handle->status = msg[1];
+		handle->model = msg[6] == MP_TL866A ? "TL866A" : "TL866CS";
+		memcpy(handle->device_code, msg + 7, 8);
+		memcpy(handle->serial_number, msg + 15, 24);
+		hw = msg[39];
+		break;
+
+	/* TL866II+:
+	 * |--------|------|---------------------------------------------|
+	 * | Offset | Size | Data                                        |
+	 * |--------|------|---------------------------------------------|
+	 * | 0x00   | 1    | Unused                                      |
+	 * | 0x01   | 1    | Revision?                                   |
+	 * | 0x02   | 2    | Unused                                      |
+	 * | 0x04   | 1    | Firmware version minor                      |
+	 * | 0x05   | 1    | Firmware version major                      |
+	 * | 0x06   | 1    | Device type (version)                       |
+	 * | 0x07   | 1    | Unused                                      |
+	 * | 0x08   | 8    | Device code                                 |
+	 * | 0x10   | 20   | Device serial number                        |
+	 * | 0x24   | 4    | Unused                                      |
+	 * | 0x28   | 1    | HW version                                  |
+	 * |--------|------|---------------------------------------------|
+	 */
 	case MP_TL866IIPLUS:
 		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
 						 MP_STATUS_NORMAL;
@@ -92,30 +119,66 @@ static int minipro_get_system_info(minipro_handle_t *handle)
 		hw = msg[40];
 		break;
 
-	case MP_TL866A:
-	case MP_TL866CS:
-		handle->status = msg[1];
-		handle->model = msg[6] == MP_TL866A ? "TL866A" : "TL866CS";
-		memcpy(handle->device_code, msg + 7, 8);
-		memcpy(handle->serial_number, msg + 15, 24);
-		hw = msg[39];
-		break;
+	/* T56, T48:
+	 * |--------|------|---------------------------------------------|
+	 * | Offset | Size | Data                                        |
+	 * |--------|------|---------------------------------------------|
+	 * | 0x00   | 1    | Unused                                      |
+	 * | 0x01   | 1    | Revision?                                   |
+	 * | 0x02   | 2    | Unused                                      |
+	 * | 0x04   | 1    | Firmware version minor                      |
+	 * | 0x05   | 1    | Firmware version major                      |
+	 * | 0x06   | 1    | Device type (version)                       |
+	 * | 0x07   | 1    | Unused                                      |
+	 * | 0x08   | 16   | Manufacture date                            |
+	 * | 0x18   | 8    | Device code                                 |
+	 * | 0x20   | 24   | Device serial number                        |
+	 * | 0x38   | 4    | Voltage, ((x * 0xccf6 / 0x27000) / 100.0) V |
+	 * | 0x3c   | 1    | USB speed (0=12Mbsp, 1=480Mbps)             |
+	 * | 0x3d   | 1    | Unused                                      |
+	 * | 0x3e   | 1    | External power supply                       |
+	 * |--------|------|---------------------------------------------|
+	 */
 	case MP_T48:
 		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
 						 MP_STATUS_NORMAL;
 		handle->model = "T48";
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
-		hw = msg[60]; /* TODO: confirm that it's HW */
+		hw = 0;
 		break;
+
 	case MP_T56:
 		handle->status = (msg[4] == 0) ? MP_STATUS_BOOTLOADER :
 						 MP_STATUS_NORMAL;
 		handle->model = "T56";
 		memcpy(handle->device_code, msg + 24, 8);
 		memcpy(handle->serial_number, msg + 32, 24);
-		hw = msg[60]; /* TODO: confirm that it's HW */
+		hw = 0;
 		break;
+
+	/* TODO: T56P:
+	 * |--------|------|---------------------------------------------|
+	 * | Offset | Size | Data                                        |
+	 * |--------|------|---------------------------------------------|
+	 * | 0x00   | 1    | Unused                                      |
+	 * | 0x01   | 1    | Revision?                                   |
+	 * | 0x02   | 2    | Unused                                      |
+	 * | 0x04   | 1    | Firmware version minor                      |
+	 * | 0x05   | 1    | Firmware version major                      |
+	 * | 0x06   | 1    | Device type (version)                       |
+	 * | 0x07   | 1    | Unused                                      |
+	 * | 0x08   | 16   | Manufacture date                            |
+	 * | 0x18   | 8    | Device code                                 |
+	 * | 0x20   | 24   | Device serial number                        |
+	 * | 0x38   | 4    | Voltage, (x / 1000.0) V                     |
+	 * | 0x3c   | 1    | USB speed (0=12Mbsp, 1=480Mbps, 3=5Gbps)    |
+	 * | 0x3d   | 1    | Unused                                      |
+	 * | 0x3e   | 1    | External power supply                       |
+	 * | 0x3f   | 1    | Unused                                      |
+	 * |--------|------|---------------------------------------------|
+	 */
+
 	default:
 		return EXIT_SUCCESS;
 	}
