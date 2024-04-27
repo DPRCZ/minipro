@@ -1692,7 +1692,11 @@ int write_page_file(minipro_handle_t *handle, uint8_t type, size_t size)
 			return EXIT_FAILURE;
 		}
 
-		uint8_t *chip_data = malloc(size);
+		/* There is an off by one bug in T56 firmware.
+		 * Allocate couple extra bytes to prevent buffer overflow.
+		 * We need only one byte but make it 16, we never know.
+		 */
+		uint8_t *chip_data = malloc(size + 16);
 		if (!chip_data) {
 			fprintf(stderr, "Out of memory\n");
 			free(file_data);
