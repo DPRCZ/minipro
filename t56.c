@@ -384,7 +384,7 @@ int t56_get_chip_id(minipro_handle_t *handle, uint8_t *type,
 		return bb_get_chip_id(handle, device_id);
 	}
 	uint8_t msg[32], format, id_length;
-	memset(msg, 0xd0, sizeof(msg));
+	memset(msg, 0x00, sizeof(msg));
 	msg[0] = T56_READID;
 	if (msg_send(handle->usb_handle, msg, 8))
 		return EXIT_FAILURE;
