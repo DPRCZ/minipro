@@ -75,9 +75,8 @@
 #define T48_SET_OUT		 0x36
 
 /* Firmware */
+#define T48_BTLDR_MAGIC  0xCDEF89AB45670123
 
-#define T48_BTLDR_MAGIC1	 0x45670123
-#define T48_BTLDR_MAGIC2	 0xCDEF89AB
 
 /* #define DEBUG_USB_MSG */
 #ifdef DEBUG_USB_MSG
@@ -677,8 +676,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 		return EXIT_FAILURE;
 	}
 
-	 /* TODO: HW version detection may be incorrect here: */
-	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
+	fprintf(stderr, "%s contains firmware version %02u.%02u.%02u", firmware,
 		0, (version >> 8) & 0xFF, (version & 0xFF));
 
 	if (handle->firmware > version)
@@ -702,9 +700,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 
 		memset(msg, 0, sizeof(msg));
 		msg[0] = T48_SWITCH;
-		format_int(&msg[8], T48_BTLDR_MAGIC1, 4, MP_LITTLE_ENDIAN);
-		format_int(&msg[12], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
-		if (msg_send(handle->usb_handle, msg, 8)) {
+		format_int(&msg[8], T48_BTLDR_MAGIC, 8, MP_LITTLE_ENDIAN);
 		if (msg_send(handle->usb_handle, msg, 16)) {
 			free(update_dat);
 			return EXIT_FAILURE;
@@ -751,8 +747,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 
 	memset(msg, 0, sizeof(msg));
 	msg[0] = T48_BOOTLOADER_ERASE;
-	format_int(&msg[8], T48_BTLDR_MAGIC1, 4, MP_LITTLE_ENDIAN);
-	format_int(&msg[12], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
+	format_int(&msg[8], T48_BTLDR_MAGIC, 8, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 16)) {
 		fprintf(stderr, "\nErase failed!\n");
 		free(update_dat);
@@ -782,8 +777,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 	memset(msg, 0, sizeof(msg));
 	msg[0] = T48_BOOTLOADER_WRITE;
 	msg[1] = 1;
-	format_int(&msg[8], T48_BTLDR_MAGIC1, 4, MP_LITTLE_ENDIAN);
-	format_int(&msg[12], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
+	format_int(&msg[8], T48_BTLDR_MAGIC, 8, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 16)) {
 		fprintf(stderr, "\nReflash failed!\n");
 		free(update_dat);
@@ -855,8 +849,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 	memset(msg, 0, sizeof(msg));
 	msg[0] = T48_BOOTLOADER_WRITE;
 	msg[1] = 2;
-	format_int(&msg[8], T48_BTLDR_MAGIC1, 4, MP_LITTLE_ENDIAN);
-	format_int(&msg[12], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
+	format_int(&msg[8], T48_BTLDR_MAGIC, 8, MP_LITTLE_ENDIAN);
 	if (msg_send(handle->usb_handle, msg, 16)) {
 		fprintf(stderr, "\nReflash failed!\n");
 		free(update_dat);
