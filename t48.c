@@ -705,6 +705,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 		format_int(&msg[8], T48_BTLDR_MAGIC1, 4, MP_LITTLE_ENDIAN);
 		format_int(&msg[12], T48_BTLDR_MAGIC2, 4, MP_LITTLE_ENDIAN);
 		if (msg_send(handle->usb_handle, msg, 8)) {
+		if (msg_send(handle->usb_handle, msg, 16)) {
 			free(update_dat);
 			return EXIT_FAILURE;
 		}
