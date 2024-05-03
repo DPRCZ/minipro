@@ -1,7 +1,7 @@
 Summary of changes between minipro 0.6 and minipro 0.7
 ======================================================
 
-Minipro 0.7 was released on ???day ??? ??, 2024
+Minipro 0.7 was released on Thursday April 11, 2024
 
 NEW FEATURES
 
@@ -10,6 +10,10 @@ NEW FEATURES
 - Added logic testing to TL866CS/A code.
 
 - Added experimental support for T48 and T56.
+
+BUG FIXES
+
+- Too many to mention.
 
 
 Summary of changes between minipro 0.5 and minipro 0.6
