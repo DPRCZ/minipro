@@ -60,9 +60,11 @@
 #define T56_REQUEST_STATUS	 0x39
 #define T56_PIN_DETECTION	 0x3E
 
+/* Firmware */
 #define T56_BOOTLOADER_WRITE	 0x3B
 #define T56_BOOTLOADER_ERASE	 0x3C
 #define T56_SWITCH		 0x3D
+#define T56_BTLDR_MAGIC		 0xA578B986
 
 /* Device algorithm numbers used to autodetect 8/16 pin SPI devices.
  * This will select algorithm 'SPI25F11' and 'SPI25F21'
@@ -73,8 +75,6 @@
 #define SPI_DEVICE_16P 0x21
 #define SPI_PROTOCOL 0x03
 
-
-#define T56_BTLDR_MAGIC		 0xA578B986
 
 /* Send the required bitstream algorithm to T56 */
 static int t56_send_bitstream(minipro_handle_t *handle)
@@ -778,8 +778,7 @@ int t56_firmware_update(minipro_handle_t *handle, const char *firmware)
 		return EXIT_FAILURE;
 	}
 
-	 /* TODO: HW version detection may be incorrect here: */
-	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
+	fprintf(stderr, "%s contains firmware version %02u.%02u.%02u", firmware,
 		0, (version >> 8) & 0xFF, (version & 0xFF));
 
 	if (handle->firmware > version)
