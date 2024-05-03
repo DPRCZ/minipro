@@ -37,23 +37,29 @@
 
 #define CRC32_POLYNOMIAL  0xEDB88320
 
-void format_int(uint8_t *out, uint32_t in, size_t size, uint8_t endianness)
+void format_int(uint8_t *out, uint64_t in, size_t size, uint8_t endianness)
 {
-	uint32_t idx;
-	size_t i;
+	int i;
 	for (i = 0; i < size; i++) {
-		idx = (endianness == MP_LITTLE_ENDIAN ? i : size - 1 - i);
-		out[i] = (in & 0xFF << idx * 8) >> idx * 8;
+		if (endianness == MP_LITTLE_ENDIAN) {
+			out[i] = in >> 8 * i;
+		} else {
+			out[size - i - 1] = in << 8 * i;
+		}
 	}
 }
 
-uint32_t load_int(uint8_t *buffer, size_t size, uint8_t endianness)
+uint64_t load_int(uint8_t *in, size_t size, uint8_t endianness)
 {
-	uint32_t idx, result = 0;
-	size_t i;
+	uint64_t result = 0;
+	int i;
 	for (i = 0; i < size; i++) {
-		idx = (endianness == MP_LITTLE_ENDIAN ? i : size - 1 - i);
-		result |= (buffer[i] << idx * 8);
+		if (endianness == MP_LITTLE_ENDIAN) {
+			result |= (((uint64_t)(((uint8_t *)(in))[i]) << i * 8));
+		} else {
+			result |= (((uint64_t)(((uint8_t *)(in))[size - i - 1])
+				    << i * 8));
+		}
 	}
 	return result;
 }

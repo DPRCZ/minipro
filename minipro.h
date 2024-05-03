@@ -320,8 +320,8 @@ typedef struct minipro_handle {
 } minipro_handle_t;
 
 /* These are old byte_utils functions */
-void format_int(uint8_t *out, uint32_t in, size_t size, uint8_t endianness);
-uint32_t load_int(uint8_t *buffer, size_t size, uint8_t endianness);
+void format_int(uint8_t *out, uint64_t in, size_t size, uint8_t endianness);
+uint64_t load_int(uint8_t *buffer, size_t size, uint8_t endianness);
 
 /* Helper functions */
 void minipro_print_system_info(minipro_handle_t *handle);
