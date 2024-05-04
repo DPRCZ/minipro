@@ -715,7 +715,7 @@ It has a fixed 16 byte header, followed by a number of 2068-byte blocks
 /* Performing a firmware update */
 int t56_firmware_update(minipro_handle_t *handle, const char *firmware)
 {
-	uint8_t msg[2080];
+	static uint8_t msg[2080];
 
 	struct stat st;
 	if (stat(firmware, &st)) {

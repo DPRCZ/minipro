@@ -640,7 +640,7 @@ The structure of each data block is as following:
 /* Performing a firmware update */
 int tl866iiplus_firmware_update(minipro_handle_t *handle, const char *firmware)
 {
-	uint8_t msg[264];
+	static uint8_t msg[264];
 	struct stat st;
 	if (stat(firmware, &st)) {
 		fprintf(stderr, "%s open error!: ", firmware);
