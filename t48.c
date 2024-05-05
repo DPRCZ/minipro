@@ -75,6 +75,9 @@
 #define T48_SET_OUT		 0x36
 
 /* Firmware */
+#define T48_UPDATE_FILE_VERS_MASK 0xffff0000
+#define T48_FIRMWARE_VERS_MASK 0x0000ffff
+#define T48_UPDATE_FILE_VERSION 0xf0480000
 #define T48_BTLDR_MAGIC  0xCDEF89AB45670123
 
 
@@ -652,13 +655,14 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 	}
 	fclose(file);
 
+	/* check for update file version */
 	uint32_t version = load_int(update_dat, 4, MP_LITTLE_ENDIAN);
-	if ((version & 0xFFFF0000) != 0xf0480000) {
+	if ((version & T48_UPDATE_FILE_VERS_MASK) != T48_UPDATE_FILE_VERSION) {
 		fprintf(stderr, "%s file version error!\n", firmware);
 		free(update_dat);
 		return EXIT_FAILURE;
 	}
-	version &= 0x0000FFFF;
+	version &= T48_FIRMWARE_VERS_MASK;
 
 	/* Read the blocks count and check if correct */
 	uint32_t blocks = load_int(update_dat + 12, 4, MP_LITTLE_ENDIAN);
@@ -676,7 +680,7 @@ int t48_firmware_update(minipro_handle_t *handle, const char *firmware)
 		return EXIT_FAILURE;
 	}
 
-	fprintf(stderr, "%s contains firmware version %02u.%02u.%02u", firmware,
+	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
 		0, (version >> 8) & 0xFF, (version & 0xFF));
 
 	if (handle->firmware > version)

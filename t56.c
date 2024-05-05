@@ -58,12 +58,17 @@
 #define T56_AUTODETECT		 0x37
 #define T56_UNLOCK_TSOP48	 0x38
 #define T56_REQUEST_STATUS	 0x39
-#define T56_PIN_DETECTION	 0x3E
-
-/* Firmware */
 #define T56_BOOTLOADER_WRITE	 0x3B
 #define T56_BOOTLOADER_ERASE	 0x3C
 #define T56_SWITCH		 0x3D
+#define T56_PIN_DETECTION	 0x3E
+
+
+
+/* Firmware */
+#define T56_UPDATE_FILE_VERS_MASK 0xffff0000
+#define T56_FIRMWARE_VERS_MASK 0x0000ffff
+#define T56_UPDATE_FILE_VERSION 0x56000000
 #define T56_BTLDR_MAGIC		 0xA578B986
 
 /* Device algorithm numbers used to autodetect 8/16 pin SPI devices.
@@ -754,13 +759,14 @@ int t56_firmware_update(minipro_handle_t *handle, const char *firmware)
 	}
 	fclose(file);
 
+	/* check for update file version */
 	uint32_t version = load_int(update_dat, 4, MP_LITTLE_ENDIAN);
-	if ((version & 0xFFFF0000) != 0x56000000) {
+	if ((version & T56_UPDATE_FILE_VERS_MASK) != T56_UPDATE_FILE_VERSION) {
 		fprintf(stderr, "%s file version error!\n", firmware);
 		free(update_dat);
 		return EXIT_FAILURE;
 	}
-	version &= 0x0000FFFF;
+	version &= T56_FIRMWARE_VERS_MASK;
 
 	/* Read the blocks count and check if correct */
 	uint32_t blocks = load_int(update_dat + 12, 4, MP_LITTLE_ENDIAN);
@@ -778,7 +784,7 @@ int t56_firmware_update(minipro_handle_t *handle, const char *firmware)
 		return EXIT_FAILURE;
 	}
 
-	fprintf(stderr, "%s contains firmware version %02u.%02u.%02u", firmware,
+	fprintf(stderr, "%s contains firmware version %02u.%u.%02u", firmware,
 		0, (version >> 8) & 0xFF, (version & 0xFF));
 
 	if (handle->firmware > version)

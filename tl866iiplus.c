@@ -74,7 +74,10 @@
 #define TL866IIPLUS_READ_PINS		 0x35
 #define TL866IIPLUS_SET_OUT		 0x36
 
+/* firmware */
 #define TL866IIPLUS_BTLDR_MAGIC		 0xA578B986
+#define TL866IIPLUS_UPDATE_FILE_VERS_MASK 0xffff0000
+#define TL866IIPLUS_UPDATE_FILE_VERSION 0xf8cc0000
 
 typedef struct zif_pins_s {
 	uint8_t pin;
@@ -677,6 +680,15 @@ int tl866iiplus_firmware_update(minipro_handle_t *handle, const char *firmware)
 		return EXIT_FAILURE;
 	}
 	fclose(file);
+
+	/* check for update file version */
+	if ((load_int(update_dat, 4, MP_LITTLE_ENDIAN) &
+	     TL866IIPLUS_UPDATE_FILE_VERS_MASK) !=
+	    TL866IIPLUS_UPDATE_FILE_VERSION) {
+		fprintf(stderr, "%s file version error!\n", firmware);
+		free(update_dat);
+		return EXIT_FAILURE;
+	}
 
 	/* Read the blocks count and check if correct */
 	uint32_t blocks = load_int(update_dat + 1032, 4, MP_LITTLE_ENDIAN);
