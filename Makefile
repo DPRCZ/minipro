@@ -35,7 +35,7 @@ ifneq ($(and $(wildcard $(GIT_DIR)),$(shell which git)),)
         GIT_HASH = $(shell git rev-parse HEAD)
         GIT_DATE = $(shell git show -s --format=%ci)
 else
-        GIT_BRANCH = $(shell echo "$Format:%D$" | sed s/^.*\>\\s*//)
+        GIT_BRANCH = "$Format:%D$"
         GIT_HASH = "$Format:%H$"
         GIT_DATE = "$Format:%ci$"
 endif
